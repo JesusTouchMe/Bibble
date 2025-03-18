@@ -1,0 +1,2 @@
+native void print(int message);
+native void print(string message);

@@ -1,4 +1,31 @@
 tokens {
     +
     -
+
+    =
+
+    .
+    ;
+
+    (
+    )
+    {
+    _right_brace
+
+    _integer_literal
+    _string_literal
+    _identifier
+
+    import
+    native
+
+    bool Type
+    byte Type
+    char Type
+    short Type
+    int Type
+    long Type
+    handle Type
+    string Type
+    void Type
 }

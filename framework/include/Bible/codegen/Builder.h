@@ -1,0 +1,12 @@
+// Copyright 2025 JesusTouchMe
+
+#ifndef BIBLE_FRAMEWORK_INCLUDE_BIBLE_CODEGEN_BUILDER_H
+#define BIBLE_FRAMEWORK_INCLUDE_BIBLE_CODEGEN_BUILDER_H
+
+namespace codegen {
+    class Builder {
+
+    };
+}
+
+#endif //BIBLE_FRAMEWORK_INCLUDE_BIBLE_CODEGEN_BUILDER_H
