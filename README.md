@@ -1,0 +1,1 @@
+99% of the backend for this compiler is straight up copied from [viper-lang](https://github.com/viper-org/viper-lang/blob/rewrite). Check it out, it's a cool language
