@@ -15,6 +15,8 @@ public:
     int getStackSlots() const override;
     JesusASM::Type* getJesusASMType() const override;
 
+    CastLevel castTo(Type* destType) const override;
+
     bool isFunctionType() const override;
 
     static FunctionType* Create(Type* returnType, std::vector<Type*> arguments);

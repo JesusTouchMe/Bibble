@@ -10,11 +10,22 @@
 
 class Type {
 public:
+    enum class CastLevel {
+        Implicit,
+        ImplicitWarning,
+        Explicit,
+        Disallowed
+    };
+
     Type(std::string_view name) : mName(name) {}
     virtual ~Type() = default;
 
     virtual int getStackSlots() const = 0;
     virtual JesusASM::Type* getJesusASMType() const = 0;
+
+    virtual CastLevel castTo(Type* destType) const = 0;
+    virtual std::string getImplicitCastWarning(Type* destType) const { return ""; }
+    virtual Type* replaceWith(Type* from, Type* to) { return this; }
 
     virtual bool isIntegerType()    const { return false; }
     virtual bool isBooleanType()    const { return false; }

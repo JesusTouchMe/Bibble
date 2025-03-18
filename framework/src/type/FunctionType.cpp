@@ -42,6 +42,10 @@ JesusASM::Type* FunctionType::getJesusASMType() const {
     return JesusASM::Type::GetFunctionType(mReturnType->getJesusASMType(), arguments);
 }
 
+Type::CastLevel FunctionType::castTo(Type* destType) const {
+    return CastLevel::Disallowed;
+}
+
 bool FunctionType::isFunctionType() const {
     return true;
 }

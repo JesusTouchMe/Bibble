@@ -29,6 +29,12 @@ JesusASM::Type* ClassType::getJesusASMType() const {
     return JesusASM::Type::GetClassType(moduleName, mName);
 }
 
+Type::CastLevel ClassType::castTo(Type* destType) const {
+    //TODO: Explicit casting to handle by opening a handle to the object in the VM, making it manually managed
+    //TODO: Implicit casting to base class
+    return CastLevel::Disallowed;
+}
+
 bool ClassType::isClassType() const {
     return true;
 }

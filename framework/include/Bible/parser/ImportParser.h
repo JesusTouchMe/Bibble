@@ -17,7 +17,7 @@
 namespace parser {
     class ImportParser {
     public:
-        ImportParser(std::vector<lexer::Token>& tokens, diagnostic::Diagnostics& diag, symbol::ImportManager& importManager);
+        ImportParser(std::vector<lexer::Token>& tokens, diagnostic::Diagnostics& diag, symbol::ImportManager& importManager, symbol::Scope* globalScope);
 
         std::vector<ASTNodePtr> parse();
 
@@ -39,11 +39,9 @@ namespace parser {
         void expectAnyToken(lexer::TokenType first, auto... rest);
 
         Type* parseType();
-
-
     };
 
-    void ImportParser::expectAnyToken(lexer::TokenType first, auto ...rest) {
+    void ImportParser::expectAnyToken(lexer::TokenType first, auto... rest) {
         if constexpr (sizeof...(rest) == 0) {
             if (current().getTokenType() == first)
                 return;

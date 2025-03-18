@@ -46,8 +46,6 @@ namespace symbol {
         bool isPublic;
         ClassType* type;
         std::vector<Field> fields;
-
-        static void Create(ClassType* type, std::vector<Field> fields, bool isPublic);
     };
 
     struct FunctionSymbol {
@@ -58,24 +56,23 @@ namespace symbol {
         std::string name;
         bool isPublic;
         FunctionType* type;
-
-        static void Create(std::string moduleName, std::string name, FunctionType* type, bool isPublic);
     };
-
-    extern std::unordered_map<std::string, ClassSymbol> GlobalClasses;
-    extern std::unordered_map<std::string, FunctionSymbol> GlobalFunctions;
-
-    ClassSymbol* FindClass(std::string_view moduleName, std::string_view name);
-    ClassSymbol* FindClass(ClassType* type);
-    FunctionSymbol* FindFunction(std::string_view moduleName, std::string_view name, FunctionType* type);
 
     struct Scope {
         Scope(Scope* parent, ClassSymbol* owner);
 
         LocalSymbol* findLocal(std::string_view name);
+        ClassSymbol* findClass(std::string_view moduleName, std::string_view name);
+        ClassSymbol* findClass(ClassType* type);
+        FunctionSymbol* findFunction(std::string_view moduleName, std::string_view name, FunctionType* type);
         ClassSymbol* findOwner();
 
+        void createClass(ClassType* type, std::vector<ClassSymbol::Field> fields, bool isPublic);
+        void createFunction(std::string moduleName, std::string name, FunctionType* type, bool isPublic);
+
         std::unordered_map<std::string, LocalSymbol, StringViewHash, StringViewEqual> locals;
+        std::unordered_map<std::string, ClassSymbol> classes;
+        std::unordered_map<std::string, FunctionSymbol> functions;
 
         Scope* parent;
         ClassSymbol* owner;

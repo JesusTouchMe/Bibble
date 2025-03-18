@@ -3,7 +3,6 @@
 #include "Bible/symbol/Scope.h"
 
 #include <format>
-#include <utility>
 
 namespace symbol {
     LocalSymbol::LocalSymbol(u16 index, Type* type)
@@ -15,49 +14,11 @@ namespace symbol {
         , type(type)
         , fields(std::move(fields)) {}
 
-    void ClassSymbol::Create(ClassType* type, std::vector<Field> fields, bool isPublic) {
-        std::string name = std::format("{}:{}", type->getModuleName(), type->getName());
-
-        GlobalClasses[name] = ClassSymbol(type, std::move(fields), isPublic);
-    }
-
     FunctionSymbol::FunctionSymbol(std::string moduleName, std::string name, FunctionType* type, bool isPublic)
         : moduleName(std::move(moduleName))
         , name(std::move(name))
         , type(type)
         , isPublic(isPublic) {}
-
-    void FunctionSymbol::Create(std::string moduleName, std::string name, FunctionType* type, bool isPublic) {
-        std::string fullName = std::format("{}:{}:{}", moduleName, name, type->getName());
-
-        GlobalFunctions[fullName] = FunctionSymbol(std::move(moduleName), std::move(name), type, isPublic);
-    }
-
-    ClassSymbol* FindClass(std::string_view moduleName, std::string_view name) {
-        std::string fullName = std::format("{}:{}", moduleName, name);
-        auto it = GlobalClasses.find(fullName);
-
-        if (it != GlobalClasses.end()) {
-            return &it->second;
-        }
-
-        return nullptr;
-    }
-
-    ClassSymbol* FindClass(ClassType* type) {
-        return FindClass(type->getModuleName(), type->getName());
-    }
-
-    FunctionSymbol* FindFunction(std::string_view moduleName, std::string_view name, FunctionType* type) {
-        std::string fullName = std::format("{}:{}:{}", moduleName, name, type->getName());
-        auto it = GlobalFunctions.find(fullName);
-
-        if (it != GlobalFunctions.end()) {
-            return &it->second;
-        }
-
-        return nullptr;
-    }
 
     Scope::Scope(Scope* parent, ClassSymbol* owner)
         : parent(parent)
@@ -78,6 +39,32 @@ namespace symbol {
         return nullptr;
     }
 
+    ClassSymbol* Scope::findClass(std::string_view moduleName, std::string_view name) {
+        std::string fullName = std::format("{}:{}", moduleName, name);
+        auto it = classes.find(fullName);
+
+        if (it != classes.end()) {
+            return &it->second;
+        }
+
+        return nullptr;
+    }
+
+    ClassSymbol* Scope::findClass(ClassType* type) {
+        return findClass(type->getModuleName(), type->getName());
+    }
+
+    FunctionSymbol* Scope::findFunction(std::string_view moduleName, std::string_view name, FunctionType* type) {
+        std::string fullName = std::format("{}:{}:{}", moduleName, name, type->getName());
+        auto it = functions.find(fullName);
+
+        if (it != functions.end()) {
+            return &it->second;
+        }
+
+        return nullptr;
+    }
+
     ClassSymbol* Scope::findOwner() {
         Scope* scope = this;
         while (scope != nullptr) {
@@ -89,5 +76,15 @@ namespace symbol {
         }
 
         return nullptr;
+    }
+
+    void Scope::createClass(ClassType* type, std::vector<ClassSymbol::Field> fields, bool isPublic) {
+        std::string fullName = std::format("{}:{}", type->getModuleName(), type->getName());
+        classes[fullName] = ClassSymbol(type, std::move(fields), isPublic);
+    }
+
+    void Scope::createFunction(std::string moduleName, std::string name, FunctionType* type, bool isPublic) {
+        std::string fullName = std::format("{}:{}:{}", moduleName, name, type->getName());
+        functions[fullName] = FunctionSymbol(moduleName, name, type, isPublic);
     }
 }

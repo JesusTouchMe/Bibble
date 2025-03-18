@@ -16,10 +16,10 @@ std::unordered_map<std::string, std::unique_ptr<Type>, StringViewHash, StringVie
 void Type::Init() {
     JesusASM::Type::Init();
 
-    types["byte"] = std::make_unique<IntegerType>("byte", 1);
-    types["short"] = std::make_unique<IntegerType>("short", 1);
-    types["int"] = std::make_unique<IntegerType>("int", 1);
-    types["long"] = std::make_unique<IntegerType>("long", 2);
+    types["byte"] = std::make_unique<IntegerType>("byte", IntegerType::Size::Byte);
+    types["short"] = std::make_unique<IntegerType>("short", IntegerType::Size::Short);
+    types["int"] = std::make_unique<IntegerType>("int", IntegerType::Size::Int);
+    types["long"] = std::make_unique<IntegerType>("long", IntegerType::Size::Long);
 
     types["bool"] = std::make_unique<BooleanType>();
     types["char"] = std::make_unique<CharType>();

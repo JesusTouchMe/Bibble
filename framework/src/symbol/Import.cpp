@@ -6,19 +6,27 @@
 
 #include "Bible/symbol/Import.h"
 
+#include <algorithm>
 #include <fstream>
 
 namespace symbol {
-
     ImportManager::ImportManager() {
-        addModulePath(".");
+        addModulePath(fs::current_path());
     }
 
-    void ImportManager::addModulePath(std::string path) {
+    void ImportManager::addModulePath(fs::path path) {
         mModulePaths.push_back(std::move(path));
     }
 
-    std::vector<parser::ASTNodePtr> ImportManager::importModule(fs::path path, diagnostic::Diagnostics& diag) {
+    const std::vector<parser::ASTNodePtr>& ImportManager::importModule(fs::path path, std::string moduleName, diagnostic::Diagnostics& diag) {
+        auto it = std::find_if(mImportedModules.begin(), mImportedModules.end(), [&moduleName](const auto& module) {
+            return module.first == moduleName;
+        });
+
+        if (it != mImportedModules.end()) {
+            return it->second;
+        }
+
         path += ".bible";
 
         std::ifstream stream;
@@ -45,6 +53,7 @@ namespace symbol {
         parser::ImportParser parser(tokens, importDiag, *this);
 
         std::vector<parser::ASTNodePtr> nodes = parser.parse();
-        return nodes;
+        auto [it1, _] = mImportedModules.emplace(std::move(moduleName), std::move(nodes));
+        return it1->second;
     }
 }

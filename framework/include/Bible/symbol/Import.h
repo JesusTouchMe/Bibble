@@ -7,6 +7,7 @@
 
 #include <filesystem>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace fs = std::filesystem;
@@ -16,11 +17,12 @@ namespace symbol {
     public:
         ImportManager();
 
-        void addModulePath(std::string path);
-        std::vector<parser::ASTNodePtr> importModule(fs::path path, diagnostic::Diagnostics& diag);
+        void addModulePath(fs::path path);
+        const std::vector<parser::ASTNodePtr>& importModule(fs::path path, std::string moduleName, diagnostic::Diagnostics& diag);
 
     private:
-        std::vector<std::string> mModulePaths;
+        std::vector<fs::path> mModulePaths;
+        std::unordered_map<std::string, std::vector<parser::ASTNodePtr>> mImportedModules;
     };
 }
 

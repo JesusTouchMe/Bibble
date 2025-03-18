@@ -13,6 +13,10 @@ JesusASM::Type* VoidType::getJesusASMType() const {
     return JesusASM::Type::GetBuiltinType("void");
 }
 
+Type::CastLevel VoidType::castTo(Type* destType) const {
+    return CastLevel::Disallowed;
+}
+
 bool VoidType::isVoidType() const {
     return true;
 }

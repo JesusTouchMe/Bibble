@@ -17,6 +17,8 @@ public:
     int getStackSlots() const override;
     JesusASM::Type* getJesusASMType() const override;
 
+    CastLevel castTo(Type* destType) const override;
+
     bool isClassType() const override;
 
 private:
