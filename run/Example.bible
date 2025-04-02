@@ -1,9 +1,5 @@
 import std.IO;
 
 void main() {
-    int a = 2 + 2;
-    IO.print(a);
-
-    string message = "Hello World!";
-    IO.print(message);
+    IO::print(2 + 2);
 }

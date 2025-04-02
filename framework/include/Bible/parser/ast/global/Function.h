@@ -5,28 +5,42 @@
 
 #include "Bible/parser/ast/Node.h"
 
+#include <moduleweb/function_info.h>
+
 namespace parser {
     struct FunctionArgument {
-        std::string name;
         Type* type;
+        std::string name;
+    };
+
+    enum class FunctionModifier : u16 {
+        Public = MODULEWEB_FUNCTION_MODIFIER_PUBLIC,
+        Private = MODULEWEB_FUNCTION_MODIFIER_PRIVATE,
+        Pure = MODULEWEB_FUNCTION_MODIFIER_PURE,
+        Async = MODULEWEB_FUNCTION_MODIFIER_ASYNC,
+        Native = MODULEWEB_FUNCTION_MODIFIER_NATIVE,
     };
 
     class Function : public ASTNode {
     public:
-        Function(FunctionType* type, std::vector<FunctionArgument> arguments, std::string_view name, std::vector<ASTNodePtr>&& body, symbol::Scope* scope);
+        Function(std::vector<FunctionModifier> modifiers, std::string name, FunctionType* type, std::vector<FunctionArgument> arguments, std::vector<ASTNodePtr> body, symbol::ScopePtr scope, lexer::Token token);
 
-        Type* getReturnType() const;
+        void codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag) override;
 
-        void typeCheck(symbol::Scope* scope, diagnostic::Diagnostics& diag) override;
-        void emit(codegen::Builder& builder, codegen::Context& ctx, symbol::Scope* scope, diagnostic::Diagnostics& diag) override;
+        void semanticCheck(diagnostic::Diagnostics& diag, bool& exit, bool statement) override;
+
+        void typeCheck(diagnostic::Diagnostics& diag, bool& exit) override;
+        bool triviallyImplicitCast(diagnostic::Diagnostics& diag, Type* destType) override;
 
     private:
-        FunctionType* mFunctionType;
+        std::vector<FunctionModifier> mModifiers;
+        std::string mName;
         std::vector<FunctionArgument> mArguments;
-        std::string name;
         std::vector<ASTNodePtr> mBody;
-        symbol::ScopePtr mScope;
+        symbol::ScopePtr mOwnScope;
     };
+
+    using FunctionPtr = std::unique_ptr<Function>;
 }
 
 #endif //BIBLE_FRAMEWORK_INCLUDE_BIBLE_PARSER_AST_GLOBAL_FUNCTION_H

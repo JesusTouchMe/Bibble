@@ -6,6 +6,7 @@
 #define BIBLE_FRAMEWORK_INCLUDE_BIBLE_DIAGNOSTIC_DIAGNOSTIC_H
 
 #include <string>
+#include <vector>
 
 namespace lexer {
     class SourceLocation;
@@ -21,20 +22,20 @@ namespace fmt {
 namespace diagnostic {
     class Diagnostics {
     public:
+        Diagnostics();
+
         void setImported(bool imported);
-        void setFileName(std::string fileName);
-        void setErrorSender(std::string sender);
-        void setText(std::string text);
+        void setWarning(bool enable, std::string_view warning);
+        void setText(std::string_view text);
 
         [[noreturn]] void fatalError(std::string_view message);
 
-        [[noreturn]] void compilerError(lexer::SourceLocation start, lexer::SourceLocation end, std::string_view message);
-        void compilerWarning(lexer::SourceLocation start, lexer::SourceLocation end, std::string_view message);
+        void compilerError(lexer::SourceLocation start, lexer::SourceLocation end, std::string_view message);
+        void compilerWarning(std::string_view type, lexer::SourceLocation start, lexer::SourceLocation end, std::string_view message);
 
     private:
-        std::string mFileName;
-        std::string mSender;
-        std::string mText;
+        std::string_view mText;
+        std::vector<std::string_view> mWarnings;
         bool mImported{ false };
 
         unsigned int getLinePosition(unsigned int lineNumber);

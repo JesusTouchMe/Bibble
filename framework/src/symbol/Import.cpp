@@ -18,15 +18,7 @@ namespace symbol {
         mModulePaths.push_back(std::move(path));
     }
 
-    const std::vector<parser::ASTNodePtr>& ImportManager::importModule(fs::path path, std::string moduleName, diagnostic::Diagnostics& diag) {
-        auto it = std::find_if(mImportedModules.begin(), mImportedModules.end(), [&moduleName](const auto& module) {
-            return module.first == moduleName;
-        });
-
-        if (it != mImportedModules.end()) {
-            return it->second;
-        }
-
+    std::vector<parser::ASTNodePtr> ImportManager::importModule(fs::path path, diagnostic::Diagnostics& diag, Scope* scope) {
         path += ".bible";
 
         std::ifstream stream;
@@ -39,21 +31,24 @@ namespace symbol {
         std::stringstream buffer;
         buffer << stream.rdbuf();
 
+        std::string text = buffer.str();
+
         diagnostic::Diagnostics importDiag;
-        importDiag.setErrorSender("bible");
-        importDiag.setFileName(path.string());
         importDiag.setText(buffer.str());
         importDiag.setImported(true);
 
         std::string fileName = path.string();
-        lexer::Lexer lexer(buffer.str(), fileName);
+        lexer::Lexer lexer(text, fileName);
 
         std::vector<lexer::Token> tokens = lexer.lex();
 
-        parser::ImportParser parser(tokens, importDiag, *this);
+        parser::ImportParser parser(tokens, importDiag, *this, scope);
 
         std::vector<parser::ASTNodePtr> nodes = parser.parse();
-        auto [it1, _] = mImportedModules.emplace(std::move(moduleName), std::move(nodes));
-        return it1->second;
+        return nodes;
+    }
+
+    void ImportManager::seizeScope(ScopePtr scope) {
+        mScopes.push_back(std::move(scope));
     }
 }

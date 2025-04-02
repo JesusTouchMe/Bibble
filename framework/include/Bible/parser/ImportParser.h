@@ -5,7 +5,8 @@
 
 #include "Bible/lexer/Token.h"
 
-#include "Bible/parser/ast/Node.h"
+#include "Bible/parser/ast/global/ClassDeclaration.h"
+#include "Bible/parser/ast/global/Function.h"
 
 #include "Bible/symbol/Import.h"
 #include "Bible/symbol/Scope.h"
@@ -23,7 +24,7 @@ namespace parser {
 
     private:
         std::vector<lexer::Token>& mTokens;
-        int mPosition;
+        std::size_t mPosition;
 
         symbol::ImportManager& mImportManager;
 
@@ -39,6 +40,14 @@ namespace parser {
         void expectAnyToken(lexer::TokenType first, auto... rest);
 
         Type* parseType();
+
+        ASTNodePtr parseGlobal();
+
+        void parseImport();
+
+        FunctionPtr parseFunction(std::vector<lexer::Token> modifierTokens);
+        ClassDeclarationPtr parseClass(std::vector<lexer::Token> modifierTokens);
+        void parseClassMember(std::vector<ClassField>& fields, std::vector<ClassMethod>& methods, std::vector<lexer::Token> modifierTokens);
     };
 
     void ImportParser::expectAnyToken(lexer::TokenType first, auto... rest) {

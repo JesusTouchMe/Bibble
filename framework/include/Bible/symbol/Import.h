@@ -18,11 +18,13 @@ namespace symbol {
         ImportManager();
 
         void addModulePath(fs::path path);
-        const std::vector<parser::ASTNodePtr>& importModule(fs::path path, std::string moduleName, diagnostic::Diagnostics& diag);
+        std::vector<parser::ASTNodePtr> importModule(fs::path path, diagnostic::Diagnostics& diag, Scope* scope);
+
+        void seizeScope(ScopePtr scope);
 
     private:
         std::vector<fs::path> mModulePaths;
-        std::unordered_map<std::string, std::vector<parser::ASTNodePtr>> mImportedModules;
+        std::vector<ScopePtr> mScopes;
     };
 }
 

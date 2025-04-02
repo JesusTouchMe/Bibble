@@ -40,12 +40,25 @@ namespace symbol {
             Type* type;
         };
 
+        struct Method {
+            u16 modifiers;
+            std::string name;
+            FunctionType* type;
+        };
+
         ClassSymbol() = default;
-        ClassSymbol(ClassType* type, std::vector<Field> fields, bool isPublic);
+        ClassSymbol(std::string moduleName, std::string name, std::vector<Field> fields, std::vector<Method> methods, bool isPublic);
+
+        ClassType* getType() const;
+
+        Field* getField(std::string_view name);
+        Method* getMethod(std::string_view name);
 
         bool isPublic;
-        ClassType* type;
+        std::string moduleName;
+        std::string name;
         std::vector<Field> fields;
+        std::vector<Method> methods;
     };
 
     struct FunctionSymbol {
@@ -59,24 +72,47 @@ namespace symbol {
     };
 
     struct Scope {
-        Scope(Scope* parent, ClassSymbol* owner);
+        Scope(Scope* parent, std::string name, bool isGlobalScope, Type* currentReturnType = nullptr);
+
+        std::vector<std::string> getNames();
+        Scope* getTopLevelScope();
+
+        std::vector<FunctionSymbol*> getCandidateFunctions(std::vector<std::string> names);
+        std::vector<FunctionSymbol*> getCandidateFunctionsDown(std::string name);
+        std::vector<FunctionSymbol*> getCandidateFunctionsDown(std::vector<std::string> names);
+
+        std::string_view findModuleName(std::string_view name);
 
         LocalSymbol* findLocal(std::string_view name);
-        ClassSymbol* findClass(std::string_view moduleName, std::string_view name);
-        ClassSymbol* findClass(ClassType* type);
-        FunctionSymbol* findFunction(std::string_view moduleName, std::string_view name, FunctionType* type);
+        ClassSymbol* findClass(std::string_view name);
+        ClassSymbol* findClass(std::vector<std::string> names);
+        FunctionSymbol* findFunction(std::string_view name, FunctionType* type);
+        FunctionSymbol* findFunction(std::vector<std::string> names, FunctionType* type);
         ClassSymbol* findOwner();
 
-        void createClass(ClassType* type, std::vector<ClassSymbol::Field> fields, bool isPublic);
-        void createFunction(std::string moduleName, std::string name, FunctionType* type, bool isPublic);
+        ClassSymbol* resolveClassSymbolDown(std::string_view name);
+        ClassSymbol* resolveClassSymbolDown(std::vector<std::string> names);
+        FunctionSymbol* resolveFunctionSymbolDown(std::string_view name, FunctionType* type);
+        FunctionSymbol* resolveFunctionSymbolDown(std::vector<std::string> names, FunctionType* type);
 
-        std::unordered_map<std::string, LocalSymbol, StringViewHash, StringViewEqual> locals;
-        std::unordered_map<std::string, ClassSymbol> classes;
-        std::unordered_map<std::string, FunctionSymbol> functions;
+        void createClass(std::string className, std::vector<ClassSymbol::Field> fields, std::vector<ClassSymbol::Method> methods, bool isPublic);
+        void createFunction(std::string functionName, FunctionType* type, bool isPublic);
+
+        std::string name;
+
+        bool isGlobalScope;
 
         Scope* parent;
+        std::vector<Scope*> children;
+
         ClassSymbol* owner;
         Type* currentReturnType;
+
+        std::unordered_map<std::string, std::string, StringViewHash, StringViewEqual> importedModuleNames;
+
+        std::unordered_map<std::string, LocalSymbol, StringViewHash, StringViewEqual> locals;
+        std::unordered_map<std::string, ClassSymbol, StringViewHash, StringViewEqual> classes;
+        std::vector<FunctionSymbol> functions;
     };
 
     using ScopePtr = std::unique_ptr<Scope>;

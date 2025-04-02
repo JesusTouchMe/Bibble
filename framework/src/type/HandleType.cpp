@@ -13,6 +13,10 @@ JesusASM::Type* HandleType::getJesusASMType() const {
     return JesusASM::Type::GetBuiltinType("handle");
 }
 
+codegen::Type HandleType::getRuntimeType() const {
+    return codegen::Type::Category2_Handle;
+}
+
 Type::CastLevel HandleType::castTo(Type* destType) const {
     return CastLevel::Disallowed;
 }

@@ -11,6 +11,7 @@ public:
 
     int getStackSlots() const override;
     JesusASM::Type* getJesusASMType() const override;
+    codegen::Type getRuntimeType() const override;
 
     CastLevel castTo(Type* destType) const override;
 

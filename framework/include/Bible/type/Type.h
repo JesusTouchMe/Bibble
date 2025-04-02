@@ -3,10 +3,18 @@
 #ifndef BIBLE_FRAMEWORK_INCLUDE_BIBLE_TYPE_TYPE_H
 #define BIBLE_FRAMEWORK_INCLUDE_BIBLE_TYPE_TYPE_H
 
+#include "Bible/codegen/Type.h"
+
+#include "Bible/diagnostic/Diagnostic.h"
+
 #include <JesusASM/type/Type.h>
 
 #include <memory>
 #include <utility>
+
+namespace symbol {
+    class Scope;
+}
 
 class Type {
 public:
@@ -22,10 +30,13 @@ public:
 
     virtual int getStackSlots() const = 0;
     virtual JesusASM::Type* getJesusASMType() const = 0;
+    virtual codegen::Type getRuntimeType() const = 0;
 
     virtual CastLevel castTo(Type* destType) const = 0;
     virtual std::string getImplicitCastWarning(Type* destType) const { return ""; }
     virtual Type* replaceWith(Type* from, Type* to) { return this; }
+
+    virtual void resolve(symbol::Scope* scope, diagnostic::Diagnostics& diag) {}
 
     virtual bool isIntegerType()    const { return false; }
     virtual bool isBooleanType()    const { return false; }

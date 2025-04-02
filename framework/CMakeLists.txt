@@ -29,7 +29,17 @@ set(SOURCES
         src/type/ClassType.cpp
         src/symbol/Scope.cpp
         src/symbol/Import.cpp
-        src/parser/ImportParser.cpp)
+        src/parser/ImportParser.cpp
+        src/parser/ast/Node.cpp
+        src/parser/ast/global/Function.cpp
+        src/parser/ast/global/ClassDeclaration.cpp
+        src/parser/Parser.cpp
+        src/parser/ast/expression/IntegerLiteral.cpp
+        src/parser/ast/expression/BinaryExpression.cpp
+        src/parser/ast/expression/CallExpression.cpp
+        src/parser/ast/expression/VariableExpression.cpp
+        src/codegen/Context.cpp
+        src/codegen/Builder.cpp)
 set(HEADERS
         include/Bible/diagnostic/Diagnostic.h
         include/Bible/type/Type.h
@@ -47,7 +57,13 @@ set(HEADERS
         include/Bible/parser/ast/Node.h
         include/Bible/codegen/Builder.h
         include/Bible/codegen/Context.h
-        include/Bible/parser/ast/global/Function.h)
+        include/Bible/parser/ast/global/Function.h
+        include/Bible/parser/ast/global/ClassDeclaration.h
+        include/Bible/parser/ast/expression/Integerliteral.h
+        include/Bible/parser/ast/expression/BinaryExpression.h
+        include/Bible/parser/ast/expression/CallExpression.h
+        include/Bible/parser/ast/expression/VariableExpression.h
+        include/Bible/codegen/Type.h)
 
 source_group(TREE ${PROJECT_SOURCE_DIR} FILES ${SOURCES} ${HEADERS})
 
@@ -62,6 +78,14 @@ target_include_directories(bible-framework
 )
 
 target_compile_features(bible-framework PUBLIC cxx_std_20)
+
+if(WIN32)
+    target_compile_definitions(bible-framework PUBLIC PLATFORM_WINDOWS)
+elseif(APPLE)
+    target_compile_definitions(bible-framework PUBLIC PLATFORM_MACOS)
+elseif(UNIX AND NOT APPLE)
+    target_compile_definitions(bible-framework PUBLIC PLATFORM_LINUX)
+endif()
 
 add_dependencies(bible-framework JesusASM::framework)
 target_link_libraries(bible-framework PUBLIC JesusASM::framework)
