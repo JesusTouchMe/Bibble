@@ -1,6 +1,6 @@
 // Copyright 2025 JesusTouchMe
 
-#include "Bible/parser/ast/global/Function.h"
+#include "Bibble/parser/ast/global/Function.h"
 
 namespace parser {
     Function::Function(std::vector<FunctionModifier> modifiers, std::string name, FunctionType* type,

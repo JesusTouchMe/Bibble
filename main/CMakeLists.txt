@@ -1,18 +1,35 @@
 cmake_minimum_required(VERSION 3.26)
 
-set(SOURCES "src/main.cpp")
+include(FetchContent)
 
-set(HEADERS)
+FetchContent_Declare(
+    tomlplusplus
+    GIT_REPOSITORY https://github.com/marzer/tomlplusplus.git
+    GIT_TAG        v3.4.0  # Check for the latest version
+)
+
+FetchContent_MakeAvailable(tomlplusplus)
+
+set(SOURCES
+    src/main.cpp
+    src/Platform.cpp
+    src/Subcommands.cpp)
+
+set(HEADERS
+    include/Platform.h
+    include/Subcommands.h)
 
 source_group(TREE ${PROJECT_SOURCE_DIR} FILES ${SOURCES} ${HEADERS})
 
-add_executable(Bible ${SOURCES} ${HEADERS})
-add_executable(Bible::main ALIAS Bible)
+add_executable(Bibble ${SOURCES} ${HEADERS})
+add_executable(Bibble::main ALIAS Bibble)
 
-target_include_directories(Bible
+target_include_directories(Bibble
     PUBLIC
         include
 )
 
-target_compile_features(Bible PUBLIC cxx_std_20)
-target_link_libraries(Bible Bible::framework)
+target_include_directories(Bibble PRIVATE ${tomlplusplus_SOURCE_DIR})
+
+target_compile_features(Bibble PUBLIC cxx_std_20)
+target_link_libraries(Bibble PRIVATE Bibble::framework)

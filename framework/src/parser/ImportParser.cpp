@@ -1,7 +1,7 @@
 // Copyright 2025 JesusTouchMe
 
-#include "Bible/parser/ImportParser.h"
-#include "Bible/parser/Parser.h"
+#include "Bibble/parser/ImportParser.h"
+#include "Bibble/parser/Parser.h"
 
 #include <algorithm>
 
@@ -126,13 +126,13 @@ namespace parser {
                 expectToken(lexer::TokenType::Dot);
                 consume();
 
-                moduleName += ".";
+                moduleName += "/";
             }
         }
         consume();
 
         std::string shortModuleName;
-        auto pos = moduleName.find_last_of('.');
+        auto pos = moduleName.find_last_of('/');
 
         if (pos == std::string::npos) {
             shortModuleName = moduleName;

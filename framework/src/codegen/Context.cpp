@@ -1,6 +1,6 @@
 // Copyright 2025 JesusTouchMe
 
-#include "Bible/codegen/Context.h"
+#include "Bibble/codegen/Context.h"
 
 #include <cassert>
 

@@ -1,7 +1,7 @@
 // Copyright 2025 JesusTouchMe
 
-#include "Bible/parser/ast/expression/CallExpression.h"
-#include "Bible/parser/ast/expression/VariableExpression.h"
+#include "Bibble/parser/ast/expression/CallExpression.h"
+#include "Bibble/parser/ast/expression/VariableExpression.h"
 
 #include <algorithm>
 #include <format>

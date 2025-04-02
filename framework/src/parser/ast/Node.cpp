@@ -1,6 +1,6 @@
 // Copyright 2025 JesusTouchMe
 
-#include "Bible/parser/ast/Node.h"
+#include "Bibble/parser/ast/Node.h"
 
 #include <iostream>
 

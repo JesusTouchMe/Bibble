@@ -1,81 +1,57 @@
 // Copyright 2025 JesusTouchMe
 
-#include "Bible/codegen/Builder.h"
+#include "Platform.h"
+#include "Subcommands.h"
 
-#include "Bible/diagnostic/Diagnostic.h"
+#include "Bibble/diagnostic/Log.h"
 
-#include "Bible/lexer/Lexer.h"
-#include "Bible/lexer/Token.h"
-
-#include "Bible/parser/Parser.h"
-
-#include "Bible/symbol/Import.h"
-
-#include "Bible/type/Type.h"
-
-#ifdef PLATFORM_WINDOWS
-#include <windows.h>
-#endif
-
-#include <filesystem>
-#include <format>
-#include <fstream>
-
-namespace fs = std::filesystem;
-
-#ifdef PLATFORM_WINDOWS
-void SetupWindowsConsole() {
-    HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
-    if (hOut == INVALID_HANDLE_VALUE) {
-        std::cout << "failed to find stdout (windows specific issue)\n";
-        std::cout << "console output will have weird formatting\n";
-        return;
-    }
-
-    DWORD dwMode = 0;
-    if (!GetConsoleMode(hOut, &dwMode)) {
-        std::cout << "failed to get stdout console mode (windows specific issue)\n";
-        std::cout << "console output will have weird formatting\n";
-        return;
-    }
-
-    dwMode |= ENABLE_PROCESSED_OUTPUT | ENABLE_VIRTUAL_TERMINAL_PROCESSING;
-    SetConsoleMode(hOut, dwMode);
-
-    HANDLE hErr = GetStdHandle(STD_ERROR_HANDLE);
-    if (hErr == INVALID_HANDLE_VALUE) {
-        std::cout << "failed to find stderr (windows specific issue)\n";
-        std::cout << "console output will have weird formatting\n";
-        return;
-    }
-
-    if (!GetConsoleMode(hErr, &dwMode)) {
-        std::cout << "failed to get stderr console mode (windows specific issue)\n";
-        std::cout << "console output will have weird formatting\n";
-        return;
-    }
-
-    dwMode |= ENABLE_PROCESSED_OUTPUT | ENABLE_VIRTUAL_TERMINAL_PROCESSING;
-    SetConsoleMode(hErr, dwMode);
-}
-#endif
+using namespace Bibble;
 
 int main(int argc, char** argv) {
 #ifdef PLATFORM_WINDOWS
     SetupWindowsConsole();
 #endif
 
+    InitSubcommands();
+
     if (argc < 2) {
-        std::cerr << "bible: no input files\n";
+        return CallSubcommand("help");
+    }
+
+    std::string subcommand = argv[1];
+    std::vector<std::string> args(argv + 2, argv + argc);
+
+    for (const auto& arg : args) {
+        if (arg == "-V" || arg == "--verbose") {
+            Log::verbose = true;
+            break;
+        }
+    }
+
+    return CallSubcommand(subcommand, args);
+}
+
+/*
+int main(int argc, char** argv) {
+#ifdef PLATFORM_WINDOWS
+    SetupWindowsConsole();
+#endif
+
+    if (argc < 2) {
+        std::cerr << "bibble: no input files\n";
         return 1;
     }
 
     for (int i = 1; i < argc; i++) {
         std::string arg = argv[i];
-        std::ifstream inputFile(arg);
+
+        fs::path inputPath = arg;
+        if (!inputPath.has_extension()) inputPath.replace_extension(".bibble");
+
+        std::ifstream inputFile(inputPath);
 
         if (!inputFile.is_open()) {
-            std::cerr << "bible: could not find file '" << arg << "'\n";
+            std::cerr << "bibble: could not find file '" << arg << "'\n";
             return 1;
         }
 
@@ -121,7 +97,7 @@ int main(int argc, char** argv) {
         auto module = std::make_unique<JesusASM::tree::ModuleNode>(1, std::move(moduleName));
 
         // bloat up the module a lil
-        module->attributes.push_back(std::make_unique<JesusASM::Attribute<std::string_view>>("CompilerID", "Bible-Lang 1"));
+        module->attributes.push_back(std::make_unique<JesusASM::Attribute<std::string_view>>("CompilerID", "Bibble-Lang 1"));
 
         codegen::Context ctx(std::move(module));
         codegen::Builder builder(ctx);
@@ -148,3 +124,4 @@ int main(int argc, char** argv) {
 
     return 0;
 }
+ */

@@ -1,13 +1,13 @@
 // Copyright 2025 JesusTouchMe
 
-#include "Bible/symbol/Scope.h"
+#include "Bibble/symbol/Scope.h"
 
-#include "Bible/type/BooleanType.h"
-#include "Bible/type/CharType.h"
-#include "Bible/type/ClassType.h"
-#include "Bible/type/HandleType.h"
-#include "Bible/type/IntegerType.h"
-#include "Bible/type/VoidType.h"
+#include "Bibble/type/BooleanType.h"
+#include "Bibble/type/CharType.h"
+#include "Bibble/type/ClassType.h"
+#include "Bibble/type/HandleType.h"
+#include "Bibble/type/IntegerType.h"
+#include "Bibble/type/VoidType.h"
 
 #include <unordered_map>
 

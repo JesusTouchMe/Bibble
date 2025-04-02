@@ -1,6 +1,6 @@
 // Copyright 2025 JesusTouchMe
 
-#include "Bible/type/BooleanType.h"
+#include "Bibble/type/BooleanType.h"
 
 BooleanType::BooleanType()
     : Type("bool") {}

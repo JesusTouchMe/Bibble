@@ -1,6 +1,6 @@
 // Copyright 2025 JesusTouchMe
 
-#include "Bible/symbol/Scope.h"
+#include "Bibble/symbol/Scope.h"
 
 #include <algorithm>
 #include <format>
@@ -15,7 +15,9 @@ namespace symbol {
         , moduleName(std::move(moduleName))
         , name(std::move(name))
         , fields(std::move(fields))
-        , methods(std::move(methods)) {}
+        , methods(std::move(methods)) {
+        std::replace(moduleName.begin(), moduleName.end(), '.', '/');
+    }
 
     ClassType* ClassSymbol::getType() const {
         return ClassType::Create(moduleName, name);
@@ -43,7 +45,9 @@ namespace symbol {
         : moduleName(std::move(moduleName))
         , name(std::move(name))
         , type(type)
-        , isPublic(isPublic) {}
+        , isPublic(isPublic) {
+        std::replace(moduleName.begin(), moduleName.end(), '.', '/');
+    }
 
     Scope::Scope(Scope* parent, std::string name, bool isGlobalScope, Type* currentReturnType)
         : name(std::move(name))

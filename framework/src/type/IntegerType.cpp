@@ -1,8 +1,8 @@
 // Copyright 2025 JesusTouchMe
 
-#include "Bible/diagnostic/Diagnostic.h"
+#include "Bibble/diagnostic/Diagnostic.h"
 
-#include "Bible/type/IntegerType.h"
+#include "Bibble/type/IntegerType.h"
 
 #include <format>
 

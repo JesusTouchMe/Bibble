@@ -1,6 +1,6 @@
 // Copyright 2025 JesusTouchMe
 
-#include "Bible/parser/ast/expression/BinaryExpression.h"
+#include "Bibble/parser/ast/expression/BinaryExpression.h"
 
 namespace parser {
     BinaryExpression::BinaryExpression(symbol::Scope* scope, ASTNodePtr left, lexer::TokenType operatorToken,ASTNodePtr right, lexer::Token token)

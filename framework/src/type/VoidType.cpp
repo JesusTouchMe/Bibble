@@ -1,6 +1,6 @@
 // Copyright 2025 JesusTouchMe
 
-#include "Bible/type/VoidType.h"
+#include "Bibble/type/VoidType.h"
 
 #include <iostream>
 

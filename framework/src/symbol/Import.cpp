@@ -1,10 +1,10 @@
 // Copyright 2025 JesusTouchMe
 
-#include "Bible/lexer/Lexer.h"
+#include "Bibble/lexer/Lexer.h"
 
-#include "Bible/parser/ImportParser.h"
+#include "Bibble/parser/ImportParser.h"
 
-#include "Bible/symbol/Import.h"
+#include "Bibble/symbol/Import.h"
 
 #include <algorithm>
 #include <fstream>

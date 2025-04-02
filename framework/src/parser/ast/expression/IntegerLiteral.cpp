@@ -1,8 +1,8 @@
 // Copyright 2025 JesusTouchMe
 
-#include "Bible/parser/ast/expression/Integerliteral.h"
+#include "Bibble/parser/ast/expression/Integerliteral.h"
 
-#include "Bible/type/IntegerType.h"
+#include "Bibble/type/IntegerType.h"
 
 #include <format>
 #include <limits>

@@ -1,6 +1,6 @@
 // Copyright 2025 JesusTouchMe
 
-#include "Bible/parser/ast/global/ClassDeclaration.h"
+#include "Bibble/parser/ast/global/ClassDeclaration.h"
 
 namespace parser {
 

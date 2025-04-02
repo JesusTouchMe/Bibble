@@ -1,9 +1,9 @@
 // Copyright 2025 JesusTouchMe
 
-#include "Bible/codegen/Builder.h"
+#include "Bibble/codegen/Builder.h"
 
-#include "Bible/type/ClassType.h"
-#include "Bible/type/IntegerType.h"
+#include "Bibble/type/ClassType.h"
+#include "Bibble/type/IntegerType.h"
 
 namespace codegen {
     Builder::Builder(Context& ctx)

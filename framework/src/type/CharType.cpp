@@ -1,6 +1,6 @@
 // Copyright 2025 JesusTouchMe
-#include "Bible/type/CharType.h"
-#include "Bible/type/IntegerType.h"
+#include "Bibble/type/CharType.h"
+#include "Bibble/type/IntegerType.h"
 
 CharType::CharType()
     : Type("char") {}

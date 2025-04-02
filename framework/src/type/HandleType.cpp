@@ -1,6 +1,6 @@
 // Copyright 2025 JesusTouchMe
 
-#include "Bible/type/HandleType.h"
+#include "Bibble/type/HandleType.h"
 
 HandleType::HandleType()
     : Type("handle") {}

@@ -2,9 +2,9 @@
 
 // Borrowed from viper-lang: https://github.com/viper-org/viper-lang/blob/master/framework/include/diagnostic/Diagnostic.h
 
-#include "Bible/diagnostic/Diagnostic.h"
+#include "Bibble/diagnostic/Diagnostic.h"
 
-#include "Bible/lexer/Token.h"
+#include "Bibble/lexer/Token.h"
 
 #include <algorithm>
 #include <format>
@@ -41,7 +41,7 @@ namespace diagnostic {
     }
 
     void Diagnostics::fatalError(std::string_view message) {
-        std::cerr << std::format("{}bible: {}fatal error: {}{}\n", fmt::bold, fmt::red, fmt::defaults, message);
+        std::cerr << std::format("{}bibble: {}fatal error: {}{}\n", fmt::bold, fmt::red, fmt::defaults, message);
         std::exit(EXIT_FAILURE);
     }
 

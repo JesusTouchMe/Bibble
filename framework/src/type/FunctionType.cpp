@@ -1,6 +1,6 @@
 // Copyright 2025 JesusTouchMe
 
-#include "Bible/type/FunctionType.h"
+#include "Bibble/type/FunctionType.h"
 
 #include <algorithm>
 #include <format>

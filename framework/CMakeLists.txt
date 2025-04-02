@@ -39,38 +39,40 @@ set(SOURCES
         src/parser/ast/expression/CallExpression.cpp
         src/parser/ast/expression/VariableExpression.cpp
         src/codegen/Context.cpp
-        src/codegen/Builder.cpp)
+        src/codegen/Builder.cpp
+    src/diagnostic/Log.cpp)
 set(HEADERS
-        include/Bible/diagnostic/Diagnostic.h
-        include/Bible/type/Type.h
-        include/Bible/type/BooleanType.h
-        include/Bible/type/FunctionType.h
-        include/Bible/type/IntegerType.h
-        include/Bible/type/CharType.h
-        include/Bible/type/HandleType.h
-        include/Bible/type/VoidType.h
-        include/Bible/type/ClassType.h
-        include/Bible/parser/Parser.h
-        include/Bible/symbol/Scope.h
-        include/Bible/parser/ImportParser.h
-        include/Bible/symbol/Import.h
-        include/Bible/parser/ast/Node.h
-        include/Bible/codegen/Builder.h
-        include/Bible/codegen/Context.h
-        include/Bible/parser/ast/global/Function.h
-        include/Bible/parser/ast/global/ClassDeclaration.h
-        include/Bible/parser/ast/expression/Integerliteral.h
-        include/Bible/parser/ast/expression/BinaryExpression.h
-        include/Bible/parser/ast/expression/CallExpression.h
-        include/Bible/parser/ast/expression/VariableExpression.h
-        include/Bible/codegen/Type.h)
+    include/Bibble/diagnostic/Diagnostic.h
+    include/Bibble/type/Type.h
+    include/Bibble/type/BooleanType.h
+    include/Bibble/type/FunctionType.h
+    include/Bibble/type/IntegerType.h
+    include/Bibble/type/CharType.h
+    include/Bibble/type/HandleType.h
+    include/Bibble/type/VoidType.h
+    include/Bibble/type/ClassType.h
+    include/Bibble/parser/Parser.h
+    include/Bibble/symbol/Scope.h
+    include/Bibble/parser/ImportParser.h
+    include/Bibble/symbol/Import.h
+    include/Bibble/parser/ast/Node.h
+    include/Bibble/codegen/Builder.h
+    include/Bibble/codegen/Context.h
+    include/Bibble/parser/ast/global/Function.h
+    include/Bibble/parser/ast/global/ClassDeclaration.h
+    include/Bibble/parser/ast/expression/Integerliteral.h
+    include/Bibble/parser/ast/expression/BinaryExpression.h
+    include/Bibble/parser/ast/expression/CallExpression.h
+    include/Bibble/parser/ast/expression/VariableExpression.h
+    include/Bibble/codegen/Type.h
+    include/Bibble/diagnostic/Log.h)
 
 source_group(TREE ${PROJECT_SOURCE_DIR} FILES ${SOURCES} ${HEADERS})
 
 add_library(bible-framework ${SOURCES} ${HEADERS})
-add_library(Bible::framework ALIAS bible-framework)
+add_library(Bibble::framework ALIAS bible-framework)
 
-vlex_generate(bible-framework src/lexer/Lexer.vlex src/lexer include/Bible/lexer)
+vlex_generate(bible-framework src/lexer/Lexer.vlex src/lexer include/Bibble/lexer)
 
 target_include_directories(bible-framework
     PUBLIC

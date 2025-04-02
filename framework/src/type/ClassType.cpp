@@ -1,8 +1,8 @@
 // Copyright 2025 JesusTouchMe
 
-#include "Bible/symbol/Scope.h"
+#include "Bibble/symbol/Scope.h"
 
-#include "Bible/type/ClassType.h"
+#include "Bibble/type/ClassType.h"
 
 #include <algorithm>
 #include <format>
