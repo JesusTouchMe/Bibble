@@ -40,7 +40,8 @@ set(SOURCES
         src/parser/ast/expression/VariableExpression.cpp
         src/codegen/Context.cpp
         src/codegen/Builder.cpp
-    src/diagnostic/Log.cpp)
+    src/diagnostic/Log.cpp
+        src/parser/ast/expression/UnaryExpression.cpp)
 set(HEADERS
     include/Bibble/diagnostic/Diagnostic.h
     include/Bibble/type/Type.h
@@ -65,7 +66,8 @@ set(HEADERS
     include/Bibble/parser/ast/expression/CallExpression.h
     include/Bibble/parser/ast/expression/VariableExpression.h
     include/Bibble/codegen/Type.h
-    include/Bibble/diagnostic/Log.h)
+    include/Bibble/diagnostic/Log.h
+        include/Bibble/parser/ast/expression/UnaryExpression.h)
 
 source_group(TREE ${PROJECT_SOURCE_DIR} FILES ${SOURCES} ${HEADERS})
 

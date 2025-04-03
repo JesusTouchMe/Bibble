@@ -2,6 +2,8 @@
 
 #include "Bibble/parser/Parser.h"
 
+#include "Bibble/parser/ast/expression/UnaryExpression.h"
+
 #include <cinttypes>
 #include <format>
 #include <utility>
@@ -157,19 +159,16 @@ namespace parser {
 
     ASTNodePtr Parser::parseExpression(int precedence) {
         ASTNodePtr left;
-        /*
+
         int prefixOperatorPrecedence = getPrefixUnaryOperatorPrecedence(current().getTokenType());
 
         if (prefixOperatorPrecedence >= precedence) {
             lexer::Token operatorToken = consume();
-            left = std::make_unique<UnaryExpression>()
+            left = std::make_unique<UnaryExpression>(mScope, parseExpression(prefixOperatorPrecedence), operatorToken.getTokenType(), false, std::move(operatorToken));
         } else {
             left = parsePrimary();
         }
-         */
-        left = parsePrimary();
 
-        /*
         while (true) {
             int postfixOperatorPrecedence = getPostfixUnaryOperatorPrecedence(current().getTokenType());
             if (postfixOperatorPrecedence < precedence) {
@@ -178,9 +177,8 @@ namespace parser {
 
             lexer::Token operatorToken = consume();
 
-            left = std::make_unique<UnaryExpression>();
+            left = std::make_unique<UnaryExpression>(mScope, std::move(left), operatorToken.getTokenType(), true, std::move(operatorToken));
         }
-         */
 
         while (true) {
             int binaryOperatorPrecedence = getBinaryOperatorPrecedence(current().getTokenType());
@@ -324,9 +322,6 @@ namespace parser {
         symbol::ScopePtr scope = std::make_unique<symbol::Scope>(nullptr, moduleName, true);
 
         auto nodes = mImportManager.importModule(path, mDiag, scope.get());
-        for (auto& node : nodes) {
-            //mInsertNode(node);
-        }
 
         mScope->children.push_back(scope.get());
 
