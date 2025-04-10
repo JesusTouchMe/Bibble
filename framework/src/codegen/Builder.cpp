@@ -234,67 +234,67 @@ namespace codegen {
         insert<FieldInsnNode>(Opcodes::SETFIELD, classType->getModuleName(), classType->getName(), name, type->getJesusASMType()->getDescriptor());
     }
 
-    void Builder::createCmp(::Type* type) {
-        auto rhs = mContext.pop();
-        auto lhs = mContext.pop();
+    void Builder::createCmpEQ(::Type* type) {
+        cmpInsn<CmpOperator::EQ>(type);
+    }
 
-        assert(lhs.type == rhs.type && lhs.type == type->getRuntimeType());
+    void Builder::createCmpNE(::Type* type) {
+        cmpInsn<CmpOperator::NE>(type);
+    }
 
-        if (lhs.value && rhs.value) {
-            mInsertPoint->remove(lhs.value->origin);
-            mInsertPoint->remove(rhs.value->origin);
+    void Builder::createCmpLT(::Type* type) {
+        cmpInsn<CmpOperator::LT>(type);
+    }
 
-            if (lhs.value->value < rhs.value->value) createLdc(::Type::Get("int"), -1);
-            else if (lhs.value->value > rhs.value->value) createLdc(::Type::Get("int"), 1);
-            else createLdc(::Type::Get("int"), (i64) 0);
+    void Builder::createCmpGT(::Type* type) {
+        cmpInsn<CmpOperator::GT>(type);
+    }
 
-            return;
-        }
+    void Builder::createCmpLE(::Type* type) {
+        cmpInsn<CmpOperator::LE>(type);
+    }
 
-        mContext.emplace(Type::Category1_Primitive); // the result int
-
-        switch (lhs.type) {
-            case Type::Category1_Primitive:
-                insert<InsnNode>(Opcodes::ICMP);
-                break;
-            case Type::Category2_Primitive:
-                insert<InsnNode>(Opcodes::LCMP);
-                break;
-            case Type::Category2_Handle:
-                insert<InsnNode>(Opcodes::HCMP);
-                break;
-            case Type::Category2_Reference:
-                insert<InsnNode>(Opcodes::RCMP);
-                break;
-        }
+    void Builder::createCmpGE(::Type* type) {
+        cmpInsn<CmpOperator::GE>(type);
     }
 
     void Builder::createJump(Label* label) {
         insert<JumpInsnNode>(Opcodes::JMP, label);
     }
 
-    void Builder::createCondJumpEQ(Label* trueLabel, Label* falseLabel) {
-        genericCondJump<Opcodes::JMPEQ, [](i64 cond) { return cond == 0; }>(trueLabel, falseLabel);
-    }
+    void Builder::createCondJump(Label* trueLabel, Label* falseLabel) {
+        auto cmp = mContext.pop();
 
-    void Builder::createCondJumpNE(Label* trueLabel, Label* falseLabel) {
-        genericCondJump<Opcodes::JMPNE, [](i64 cond) { return cond != 0; }>(trueLabel, falseLabel);
-    }
+        if (cmp.type == Type::Compiler_CmpResult) {
+            assert(cmp.cmpOperator.has_value());
 
-    void Builder::createCondJumpLT(Label* trueLabel, Label* falseLabel) {
-        genericCondJump<Opcodes::JMPLT, [](i64 cond) { return cond < 0; }>(trueLabel, falseLabel);
-    }
-
-    void Builder::createCondJumpGT(Label* trueLabel, Label* falseLabel) {
-        genericCondJump<Opcodes::JMPGT, [](i64 cond) { return (cond > 0); }>(trueLabel, falseLabel);
-    }
-
-    void Builder::createCondJumpLE(Label* trueLabel, Label* falseLabel) {
-        genericCondJump<Opcodes::JMPLE, [](i64 cond) { return cond <= 0; }>(trueLabel, falseLabel);
-    }
-
-    void Builder::createCondJumpGE(Label* trueLabel, Label* falseLabel) {
-        genericCondJump<Opcodes::JMPGE, [](i64 cond) { return cond >= 0; }>(trueLabel, falseLabel);
+            switch (*cmp.cmpOperator) {
+                case CmpOperator::EQ:
+                    insert<JumpInsnNode>(Opcodes::JMPEQ, trueLabel);
+                    insert<JumpInsnNode>(Opcodes::JMP, falseLabel);
+                    break;
+                case CmpOperator::NE:
+                    insert<JumpInsnNode>(Opcodes::JMPNE, trueLabel);
+                    insert<JumpInsnNode>(Opcodes::JMP, falseLabel);
+                    break;
+                case CmpOperator::LT:
+                    insert<JumpInsnNode>(Opcodes::JMPLT, trueLabel);
+                    insert<JumpInsnNode>(Opcodes::JMP, falseLabel);
+                    break;
+                case CmpOperator::GT:
+                    insert<JumpInsnNode>(Opcodes::JMPGT, trueLabel);
+                    insert<JumpInsnNode>(Opcodes::JMP, falseLabel);
+                    break;
+                case CmpOperator::LE:
+                    insert<JumpInsnNode>(Opcodes::JMPLE, trueLabel);
+                    insert<JumpInsnNode>(Opcodes::JMP, falseLabel);
+                    break;
+                case CmpOperator::GE:
+                    insert<JumpInsnNode>(Opcodes::JMPGE, trueLabel);
+                    insert<JumpInsnNode>(Opcodes::JMP, falseLabel);
+                    break;
+            }
+        }
     }
 
     void Builder::createLdc(::Type* type, i64 value) {

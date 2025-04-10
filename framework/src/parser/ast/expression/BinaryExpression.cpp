@@ -2,6 +2,8 @@
 
 #include "Bibble/parser/ast/expression/BinaryExpression.h"
 
+#include <format>
+
 namespace parser {
     BinaryExpression::BinaryExpression(symbol::Scope* scope, ASTNodePtr left, lexer::TokenType operatorToken,ASTNodePtr right, lexer::Token token)
             : ASTNode(scope, std::move(token))
@@ -22,6 +24,30 @@ namespace parser {
 
             case lexer::TokenType::Slash:
                 mOperator = Operator::Div;
+                break;
+
+            case lexer::TokenType::DoubleEqual:
+                mOperator = Operator::Equal;
+                break;
+
+            case lexer::TokenType::BangEqual:
+                mOperator = Operator::NotEqual;
+                break;
+
+            case lexer::TokenType::LessThan:
+                mOperator = Operator::LessThan;
+                break;
+
+            case lexer::TokenType::GreaterThan:
+                mOperator = Operator::GreaterThan;
+                break;
+
+            case lexer::TokenType::LessEqual:
+                mOperator = Operator::LessEqual;
+                break;
+
+            case lexer::TokenType::GreaterEqual:
+                mOperator = Operator::GreaterEqual;
                 break;
 
             default:
@@ -60,6 +86,7 @@ namespace parser {
 
                 builder.createSub(mType);
                 break;
+
             case Operator::Mul:
                 if (!mType->isIntegerType()) {
                     diag.compilerError(mErrorToken.getStartLocation(),
@@ -70,6 +97,7 @@ namespace parser {
 
                 builder.createMul(mType);
                 break;
+
             case Operator::Div:
                 if (!mType->isIntegerType()) {
                     diag.compilerError(mErrorToken.getStartLocation(),
@@ -79,6 +107,25 @@ namespace parser {
                 }
 
                 builder.createDiv(mType);
+                break;
+
+            case Operator::Equal:
+                builder.createCmpEQ(mLeft->getType());
+                break;
+            case Operator::NotEqual:
+                builder.createCmpNE(mLeft->getType());
+                break;
+            case Operator::LessThan:
+                builder.createCmpLT(mLeft->getType());
+                break;
+            case Operator::GreaterThan:
+                builder.createCmpGT(mLeft->getType());
+                break;
+            case Operator::LessEqual:
+                builder.createCmpLE(mLeft->getType());
+                break;
+            case Operator::GreaterEqual:
+                builder.createCmpGE(mLeft->getType());
                 break;
         }
     }
@@ -117,11 +164,52 @@ namespace parser {
                 }
 
                 if (mLeft->getType() != mRight->getType() || !mLeft->getType()->isIntegerType()) {
-                    // TODO: error
+                    diag.compilerError(mErrorToken.getStartLocation(),
+                                       mErrorToken.getEndLocation(),
+                                       std::format("no match for '{}operator {}{}' with the given types '{}{}{}' and '{}{}{}'",
+                                                   fmt::bold, mErrorToken.getName(), fmt::defaults,
+                                                   fmt::bold, mLeft->getType()->getName(), fmt::defaults,
+                                                   fmt::bold, mRight->getType()->getName(), fmt::defaults));
                     exit = true;
                 }
 
                 mType = mLeft->getType();
+                break;
+
+
+            case Operator::Equal:
+            case Operator::NotEqual:
+            case Operator::LessThan:
+            case Operator::GreaterThan:
+            case Operator::LessEqual:
+            case Operator::GreaterEqual:
+                if (mLeft->getType() != mRight->getType()) {
+                    if (mLeft->getType()->getStackSlots() > mRight->getType()->getStackSlots()) {
+                        if (mRight->implicitCast(diag, mLeft->getType())) {
+                            mRight = Cast(mRight, mLeft->getType());
+                        }
+
+                        mType = mLeft->getType();
+                    } else {
+                        if (mLeft->implicitCast(diag, mRight->getType())) {
+                            mLeft = Cast(mLeft, mRight->getType());
+                        }
+
+                        mType = mRight->getType();
+                    }
+                }
+
+                if (mLeft->getType() != mRight->getType()) {
+                    diag.compilerError(mErrorToken.getStartLocation(),
+                                       mErrorToken.getEndLocation(),
+                                       std::format("no match for '{}operator {}{}' with the given types '{}{}{}' and '{}{}{}'",
+                                                   fmt::bold, mErrorToken.getName(), fmt::defaults,
+                                                   fmt::bold, mLeft->getType()->getName(), fmt::defaults,
+                                                   fmt::bold, mRight->getType()->getName(), fmt::defaults));
+                    exit = true;
+                }
+
+                mType = Type::Get("bool");
                 break;
         }
     }

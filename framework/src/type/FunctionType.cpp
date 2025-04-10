@@ -55,8 +55,9 @@ bool FunctionType::isFunctionType() const {
     return true;
 }
 
+std::vector<std::unique_ptr<FunctionType>> functionTypes;
+
 FunctionType* FunctionType::Create(Type* returnType, std::vector<Type*> arguments) {
-    static std::vector<std::unique_ptr<FunctionType>> functionTypes;
     auto it = std::find_if(functionTypes.begin(), functionTypes.end(), [returnType, &arguments](const auto& type) {
         return type->getReturnType() == returnType && type->getArgumentTypes() == arguments;
     });

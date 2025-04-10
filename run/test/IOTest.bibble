@@ -1,5 +1,6 @@
 import std.IO;
 
-void main() {
+[Test]
+void testPrint() {
     IO::print(2 + 2);
 }

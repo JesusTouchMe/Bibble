@@ -5,6 +5,12 @@ tokens {
     /
 
     =
+    ==
+    !=
+    <
+    >
+    <=
+    >=
 
     .
     ,
@@ -23,7 +29,14 @@ tokens {
     import
     native
 
+    if
+    else
+
+    true
+    false
+
     bool Type
+    boolean Type
     byte Type
     char Type
     short Type

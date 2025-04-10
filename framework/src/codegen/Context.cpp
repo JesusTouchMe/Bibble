@@ -22,4 +22,9 @@ namespace codegen {
         mVirtualStack.pop_back();
         return value;
     }
+
+    Value& Context::top() {
+        assert(!mVirtualStack.empty());
+        return mVirtualStack.back();
+    }
 }

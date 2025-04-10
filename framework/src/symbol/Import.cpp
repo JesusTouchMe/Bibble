@@ -11,21 +11,25 @@
 
 namespace symbol {
     ImportManager::ImportManager() {
-        addModulePath(fs::current_path());
+        //addModulePath(fs::current_path());
     }
 
     void ImportManager::addModulePath(fs::path path) {
         mModulePaths.push_back(std::move(path));
     }
 
-    std::vector<parser::ASTNodePtr> ImportManager::importModule(fs::path path, diagnostic::Diagnostics& diag, Scope* scope) {
-        path += ".bible";
+    bool ImportManager::importModule(fs::path path, diagnostic::Diagnostics& diag, Scope* scope) {
+        path += ".bibble";
 
         std::ifstream stream;
 
         for (const auto& modulePath : mModulePaths) {
             stream.open(modulePath / path);
             if (stream.is_open()) break;
+        }
+
+        if (!stream.is_open()) {
+            return false;
         }
 
         std::stringstream buffer;
@@ -44,8 +48,8 @@ namespace symbol {
 
         parser::ImportParser parser(tokens, importDiag, *this, scope);
 
-        std::vector<parser::ASTNodePtr> nodes = parser.parse();
-        return nodes;
+        std::ignore = parser.parse();
+        return true;
     }
 
     void ImportManager::seizeScope(ScopePtr scope) {

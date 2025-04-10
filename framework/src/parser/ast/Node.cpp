@@ -2,6 +2,8 @@
 
 #include "Bibble/parser/ast/Node.h"
 
+#include "Bibble/parser/ast/expression/CastExpression.h"
+
 #include <iostream>
 
 namespace parser {
@@ -26,7 +28,6 @@ namespace parser {
             return std::move(node);
         }
 
-        std::cout << "TODO: cast expr\n";
-        std::exit(1);
+        return std::make_unique<CastExpression>(node->mScope, std::move(node), destType);
     }
 }

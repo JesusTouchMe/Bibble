@@ -13,11 +13,13 @@ FetchContent_MakeAvailable(tomlplusplus)
 set(SOURCES
     src/main.cpp
     src/Platform.cpp
-    src/Subcommands.cpp)
+    src/Subcommands.cpp
+        src/Compiler.cpp)
 
 set(HEADERS
     include/Platform.h
-    include/Subcommands.h)
+    include/Subcommands.h
+        include/Compiler.h)
 
 source_group(TREE ${PROJECT_SOURCE_DIR} FILES ${SOURCES} ${HEADERS})
 
@@ -31,5 +33,6 @@ target_include_directories(Bibble
 
 target_include_directories(Bibble PRIVATE ${tomlplusplus_SOURCE_DIR})
 
-target_compile_features(Bibble PUBLIC cxx_std_20)
+target_compile_features(Bibble PUBLIC cxx_std_23)
 target_link_libraries(Bibble PRIVATE Bibble::framework)
+target_link_libraries(Bibble PRIVATE JesusVM::framework)

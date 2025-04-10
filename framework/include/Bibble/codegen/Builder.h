@@ -23,11 +23,16 @@
 #include <cassert>
 #include <iostream>
 
+namespace Bibble {
+    class Compiler;
+}
+
 namespace codegen {
     using Label = JesusASM::tree::LabelNode;
     using LabelPtr = std::unique_ptr<Label>;
 
     class Builder {
+    friend class Bibble::Compiler;
     public:
         using Opcodes = JesusASM::Opcode;
 
@@ -75,15 +80,15 @@ namespace codegen {
         void createGetField(::Type* ownerType, ::Type* type, std::string_view name);
         void createSetField(::Type* ownerType, ::Type* type, std::string_view name);
 
-        void createCmp(::Type* type);
+        void createCmpEQ(::Type* type);
+        void createCmpNE(::Type* type);
+        void createCmpLT(::Type* type);
+        void createCmpGT(::Type* type);
+        void createCmpLE(::Type* type);
+        void createCmpGE(::Type* type);
 
         void createJump(Label* label);
-        void createCondJumpEQ(Label* trueLabel, Label* falseLabel);
-        void createCondJumpNE(Label* trueLabel, Label* falseLabel);
-        void createCondJumpLT(Label* trueLabel, Label* falseLabel);
-        void createCondJumpGT(Label* trueLabel, Label* falseLabel);
-        void createCondJumpLE(Label* trueLabel, Label* falseLabel);
-        void createCondJumpGE(Label* trueLabel, Label* falseLabel);
+        void createCondJump(Label* trueLabel, Label* falseLabel);
 
         void createLdc(::Type* type, i64 value);
         void createLdc(::Type* type, std::nullptr_t);
@@ -161,26 +166,46 @@ namespace codegen {
             }
         }
 
-        template <JesusASM::Opcode Opcode, auto ConstCmp>
-        inline void genericCondJump(Label* trueLabel, Label* falseLabel) {
-            auto condition = mContext.pop();
+        template <CmpOperator Op>
+        inline void cmpInsn(::Type* type) {
+            auto rhs = mContext.pop();
+            auto lhs = mContext.pop();
 
-            assert(condition.type == Type::Category1_Primitive);
+            assert(lhs.type == rhs.type && type->getRuntimeType() == lhs.type);
 
-            if (condition.value) {
-                mInsertPoint->remove(condition.value->origin);
+            if (lhs.value && rhs.value) {
+                mInsertPoint->remove(lhs.value->origin);
+                mInsertPoint->remove(rhs.value->origin);
 
-                if (ConstCmp(condition.value->value)) {
-                    createJump(trueLabel);
-                } else {
-                    createJump(falseLabel);
-                }
+                if (lhs.value->value < rhs.value->value) createLdc(::Type::Get("int"), -1);
+                else if (lhs.value->value > rhs.value->value) createLdc(::Type::Get("int"), 1);
+                else createLdc(::Type::Get("int"), (i64) 0);
+
+                mContext.top().type = Type::Compiler_CmpResult;
+                mContext.top().cmpOperator = Op;
 
                 return;
             }
 
-            insert<JumpInsnNode>(Opcode, trueLabel);
-            insert<JumpInsnNode>(Opcodes::JMP, falseLabel);        }
+            mContext.emplace(Op);
+
+            switch (lhs.type) {
+                case Type::Category1_Primitive:
+                    insert<InsnNode>(Opcodes::ICMP);
+                    break;
+                case Type::Category2_Primitive:
+                    insert<InsnNode>(Opcodes::LCMP);
+                    break;
+                case Type::Category2_Handle:
+                    insert<InsnNode>(Opcodes::HCMP);
+                    break;
+                case Type::Category2_Reference:
+                    insert<InsnNode>(Opcodes::RCMP);
+                    break;
+                default:
+                    assert(false && "bad codegen");
+            }
+        }
     };
 }
 

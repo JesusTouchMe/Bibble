@@ -5,10 +5,13 @@
 
 #include "Bibble/lexer/Token.h"
 
-#include "Bibble/parser/ast/expression/BinaryExpression.h"
 #include "Bibble/parser/ast/expression/CallExpression.h"
 #include "Bibble/parser/ast/expression/Integerliteral.h"
+#include "Bibble/parser/ast/expression/StringLiteral.h"
 #include "Bibble/parser/ast/expression/VariableExpression.h"
+
+#include "Bibble/parser/ast/statement/CompoundStatement.h"
+#include "Bibble/parser/ast/statement/IfStatement.h"
 
 #include "Bibble/parser/ast/global/ClassDeclaration.h"
 #include "Bibble/parser/ast/global/Function.h"
@@ -35,8 +38,6 @@ namespace parser {
 
         symbol::ImportManager& mImportManager;
 
-        std::function<void(ASTNodePtr&)> mInsertNode;
-
         lexer::Token current() const;
         lexer::Token consume();
         lexer::Token peek(int offset) const;
@@ -48,7 +49,7 @@ namespace parser {
         int getPrefixUnaryOperatorPrecedence(lexer::TokenType tokenType);
         int getPostfixUnaryOperatorPrecedence(lexer::TokenType tokenType);
 
-        Type* parseType();
+        Type* parseType(bool failable = false);
 
         ASTNodePtr parseGlobal();
         ASTNodePtr parseExpression(int precedence = 1);
@@ -60,9 +61,14 @@ namespace parser {
 
         void parseImport();
 
+        ASTNodePtr parseParenExpression();
         IntegerLiteralPtr parseIntegerLiteral();
+        StringLiteralPtr parseStringLiteral();
         VariableExpressionPtr parseVariableExpression();
         CallExpressionPtr parseCallExpression(ASTNodePtr callee);
+
+        CompoundStatementPtr parseCompoundStatement();
+        IfStatementPtr parseIfStatement();
     };
 
     void Parser::expectAnyToken(lexer::TokenType first, auto... rest) {

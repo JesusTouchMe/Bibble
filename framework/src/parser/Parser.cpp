@@ -2,6 +2,9 @@
 
 #include "Bibble/parser/Parser.h"
 
+#include "Bibble/parser/ast/expression/BinaryExpression.h"
+#include "Bibble/parser/ast/expression/BooleanLiteral.h"
+#include "Bibble/parser/ast/expression/CastExpression.h"
 #include "Bibble/parser/ast/expression/UnaryExpression.h"
 
 #include <cinttypes>
@@ -19,10 +22,6 @@ namespace parser {
 
     std::vector<ASTNodePtr> Parser::parse() {
         std::vector<ASTNodePtr> ast;
-
-        mInsertNode = [&ast](ASTNodePtr& node) {
-            if (node) ast.push_back(std::move(node));
-        };
 
         while (mPosition < mTokens.size()) {
             auto global = parseGlobal();
@@ -72,6 +71,16 @@ namespace parser {
             case lexer::TokenType::Minus:
                 return 70;
 
+            case lexer::TokenType::LessThan:
+            case lexer::TokenType::GreaterThan:
+            case lexer::TokenType::LessEqual:
+            case lexer::TokenType::GreaterEqual:
+                return 55;
+
+            case lexer::TokenType::DoubleEqual:
+            case lexer::TokenType::BangEqual:
+                return 50;
+
             case lexer::TokenType::Equal:
                 return 20;
 
@@ -82,6 +91,7 @@ namespace parser {
 
     int Parser::getPrefixUnaryOperatorPrecedence(lexer::TokenType tokenType) {
         switch(tokenType) {
+            case lexer::TokenType::LeftParen:
             case lexer::TokenType::Minus:
                 return 85;
 
@@ -94,7 +104,10 @@ namespace parser {
         return 0;
     }
 
-    Type* Parser::parseType() {
+    Type* Parser::parseType(bool failable) {
+        (void) failable; // until i get nicer errors lol
+
+        auto startPosition = mPosition;
         Type* type = nullptr;
 
         if (current().getTokenType() == lexer::TokenType::Type) {
@@ -164,7 +177,17 @@ namespace parser {
 
         if (prefixOperatorPrecedence >= precedence) {
             lexer::Token operatorToken = consume();
-            left = std::make_unique<UnaryExpression>(mScope, parseExpression(prefixOperatorPrecedence), operatorToken.getTokenType(), false, std::move(operatorToken));
+            if (operatorToken.getTokenType() == lexer::TokenType::LeftParen) {
+                if (Type* type = parseType(true)) {
+                    expectToken(lexer::TokenType::RightParen);
+                    consume();
+                    left = std::make_unique<CastExpression>(mScope, parseExpression(prefixOperatorPrecedence), type);
+                } else {
+                    left = parseParenExpression();
+                }
+            } else {
+                left = std::make_unique<UnaryExpression>(mScope, parseExpression(prefixOperatorPrecedence), operatorToken.getTokenType(), false, std::move(operatorToken));
+            }
         } else {
             left = parsePrimary();
         }
@@ -201,11 +224,25 @@ namespace parser {
 
     ASTNodePtr Parser::parsePrimary() {
         switch (current().getTokenType()) {
+            case lexer::TokenType::TrueKeyword:
+                return std::make_unique<BooleanLiteral>(mScope, true, consume());
+            case lexer::TokenType::FalseKeyword:
+                return std::make_unique<BooleanLiteral>(mScope, false, consume());
+
             case lexer::TokenType::IntegerLiteral:
                 return parseIntegerLiteral();
 
+            case lexer::TokenType::StringLiteral:
+                return parseStringLiteral();
+
             case lexer::TokenType::Identifier:
                 return parseVariableExpression();
+
+            case lexer::TokenType::LeftBrace:
+                return parseCompoundStatement();
+
+            case lexer::TokenType::IfKeyword:
+                return parseIfStatement();
 
             default:
                 mDiag.compilerError(current().getStartLocation(),
@@ -303,6 +340,9 @@ namespace parser {
     void Parser::parseImport() {
         consume();
 
+        auto start = current().getStartLocation();
+        auto end = current().getEndLocation();
+
         fs::path path;
         std::string moduleName;
         while (current().getTokenType() != lexer::TokenType::Semicolon) {
@@ -315,13 +355,22 @@ namespace parser {
                 consume();
 
                 moduleName += "/";
+            } else {
+                end = current().getEndLocation();
             }
         }
         consume();
 
         symbol::ScopePtr scope = std::make_unique<symbol::Scope>(nullptr, moduleName, true);
 
-        auto nodes = mImportManager.importModule(path, mDiag, scope.get());
+        bool success = mImportManager.importModule(path, mDiag, scope.get());
+        if (!success) {
+            mDiag.compilerError(start,
+                                end,
+                                std::format("'{}{}.bibble{}': file not found",
+                                            fmt::bold, path.string(), fmt::defaults));
+            std::exit(1);
+        }
 
         mScope->children.push_back(scope.get());
 
@@ -339,11 +388,27 @@ namespace parser {
         mScope->getTopLevelScope()->importedModuleNames[std::move(shortModuleName)] = std::move(moduleName);
     }
 
+    ASTNodePtr Parser::parseParenExpression() {
+        consume(); // (
+        auto expr = parseExpression();
+        expectToken(lexer::TokenType::RightParen);
+        consume();
+
+        return expr;
+    }
+
     IntegerLiteralPtr Parser::parseIntegerLiteral() {
         auto token = consume();
         std::string text = std::string(token.getText());
 
         return std::make_unique<IntegerLiteral>(mScope, std::strtoimax(text.c_str(), nullptr, 0), std::move(token));
+    }
+
+    StringLiteralPtr Parser::parseStringLiteral() {
+        auto token = consume();
+        std::string text = std::string(token.getText());
+
+        return std::make_unique<StringLiteral>(mScope, std::move(text), std::move(token));
     }
 
     VariableExpressionPtr Parser::parseVariableExpression() {
@@ -379,6 +444,58 @@ namespace parser {
         return std::make_unique<CallExpression>(mScope, std::move(callee), std::move(parameters));
     }
 
+    CompoundStatementPtr Parser::parseCompoundStatement() {
+        auto token = consume(); // {
+
+        symbol::ScopePtr scope = std::make_unique<symbol::Scope>(mScope, "", false);
+        mScope = scope.get();
+
+        std::vector<ASTNodePtr> body;
+        while (current().getTokenType() != lexer::TokenType::RightBrace) {
+            body.push_back(parseExpression());
+            expectToken(lexer::TokenType::Semicolon);
+            consume();
+        }
+        consume();
+
+        mTokens.insert(mTokens.begin() + mPosition, lexer::Token(";", lexer::TokenType::Semicolon, {}, {}));
+
+        mScope = scope->parent;
+
+        return std::make_unique<CompoundStatement>(std::move(scope), std::move(body), std::move(token));
+    }
+
+    IfStatementPtr Parser::parseIfStatement() {
+        auto token = consume();
+
+        expectToken(lexer::TokenType::LeftParen);
+        consume();
+
+        auto condition = parseExpression();
+
+        expectToken(lexer::TokenType::RightParen);
+        consume();
+
+        symbol::ScopePtr scope = std::make_unique<symbol::Scope>(mScope, "", false);
+        mScope = scope.get();
+
+        auto body = parseExpression();
+        ASTNodePtr elseBody = nullptr;
+
+        if (peek(1).getTokenType() == lexer::TokenType::ElseKeyword) {
+            expectToken(lexer::TokenType::Semicolon);
+            consume();
+
+            consume(); // else
+
+            elseBody = parseExpression();
+        }
+
+        mScope = scope->parent;
+
+        return std::make_unique<IfStatement>(std::move(scope) ,std::move(condition), std::move(body), std::move(elseBody), std::move(token));
+    }
+
     bool IsModifierToken(const lexer::Token& token) {
         return token.getTokenType() == lexer::TokenType::NativeKeyword;
     }
@@ -401,6 +518,7 @@ namespace parser {
                                    token.getEndLocation(),
                                    std::format("invalid function modifier: '{}{}{}'",
                                                fmt::bold, token.getText(), fmt::defaults));
+                std::exit(1);
         }
     }
 }

@@ -41,7 +41,12 @@ set(SOURCES
         src/codegen/Context.cpp
         src/codegen/Builder.cpp
     src/diagnostic/Log.cpp
-        src/parser/ast/expression/UnaryExpression.cpp)
+        src/parser/ast/expression/UnaryExpression.cpp
+        src/parser/ast/expression/StringLiteral.cpp
+        src/parser/ast/expression/CastExpression.cpp
+        src/parser/ast/expression/BooleanLiteral.cpp
+        src/parser/ast/statement/IfStatement.cpp
+        src/parser/ast/statement/CompoundStatement.cpp)
 set(HEADERS
     include/Bibble/diagnostic/Diagnostic.h
     include/Bibble/type/Type.h
@@ -67,7 +72,12 @@ set(HEADERS
     include/Bibble/parser/ast/expression/VariableExpression.h
     include/Bibble/codegen/Type.h
     include/Bibble/diagnostic/Log.h
-        include/Bibble/parser/ast/expression/UnaryExpression.h)
+        include/Bibble/parser/ast/expression/UnaryExpression.h
+        include/Bibble/parser/ast/expression/StringLiteral.h
+        include/Bibble/parser/ast/expression/CastExpression.h
+        include/Bibble/parser/ast/expression/BooleanLiteral.h
+        include/Bibble/parser/ast/statement/IfStatement.h
+        include/Bibble/parser/ast/statement/CompoundStatement.h)
 
 source_group(TREE ${PROJECT_SOURCE_DIR} FILES ${SOURCES} ${HEADERS})
 

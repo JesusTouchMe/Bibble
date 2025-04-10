@@ -105,7 +105,7 @@ namespace parser {
 
             for (auto it = candidateFunctions.begin(); it != candidateFunctions.end();) {
                 auto candidate = *it;
-                auto arguments = candidate->type->getArgumentTypes();
+                auto& arguments = candidate->type->getArgumentTypes();
 
                 if (mIsMemberFunction) {
                     if (arguments.size() != mParameters.size() + 1) {

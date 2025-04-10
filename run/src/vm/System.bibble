@@ -1,0 +1,3 @@
+native void exit(int code);
+
+native void loadPlugin(string name);

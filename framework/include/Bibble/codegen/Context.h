@@ -14,6 +14,12 @@ namespace codegen {
 
     using namespace JesusASM::tree;
 
+    enum class CmpOperator {
+        EQ, NE,
+        LT, GT,
+        LE, GE
+    };
+
     struct ValueOrigin {
         ValueOrigin(AbstractInsnNode* origin, i64 value) : origin(origin), value(value) {}
 
@@ -22,9 +28,17 @@ namespace codegen {
     };
 
     struct Value {
-        explicit Value(Type type, std::optional<ValueOrigin> value = std::nullopt) : type(type), value(value) {}
+        explicit Value(Type type, std::optional<ValueOrigin> value = std::nullopt)
+            : type(type)
+            , value(value) {}
+
+        explicit Value(std::optional<CmpOperator> cmp, std::optional<ValueOrigin> value = std::nullopt)
+            : type(Type::Compiler_CmpResult)
+            , cmpOperator(cmp)
+            , value(value) {}
 
         Type type;
+        std::optional<CmpOperator> cmpOperator;
         std::optional<ValueOrigin> value; // only present if the value is 100% known
     };
 
@@ -44,6 +58,8 @@ namespace codegen {
         }
 
         Value pop();
+
+        Value& top();
 
     private:
         std::unique_ptr<ModuleNode> mModule;

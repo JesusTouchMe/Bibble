@@ -18,7 +18,7 @@ namespace symbol {
         ImportManager();
 
         void addModulePath(fs::path path);
-        std::vector<parser::ASTNodePtr> importModule(fs::path path, diagnostic::Diagnostics& diag, Scope* scope);
+        bool importModule(fs::path path, diagnostic::Diagnostics& diag, Scope* scope);
 
         void seizeScope(ScopePtr scope);
 

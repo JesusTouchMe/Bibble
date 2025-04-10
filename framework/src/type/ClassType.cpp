@@ -53,7 +53,7 @@ bool ClassType::isClassType() const {
     return true;
 }
 
-static std::vector<std::unique_ptr<ClassType>> classTypes;
+std::vector<std::unique_ptr<ClassType>> classTypes;
 
 ClassType* ClassType::Create(std::string_view moduleName, std::string_view name) {
     auto it = std::find_if(classTypes.begin(), classTypes.end(), [moduleName, name](const auto& type) {

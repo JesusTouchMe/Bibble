@@ -9,6 +9,8 @@ namespace codegen {
         Category2_Primitive,
         Category2_Handle,
         Category2_Reference,
+
+        Compiler_CmpResult,
     };
 }
 

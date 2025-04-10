@@ -17,6 +17,13 @@ namespace parser {
             Sub,
             Mul,
             Div,
+
+            Equal,
+            NotEqual,
+            LessThan,
+            GreaterThan,
+            LessEqual,
+            GreaterEqual,
         };
 
         BinaryExpression(symbol::Scope* scope, ASTNodePtr left, lexer::TokenType operatorToken, ASTNodePtr right, lexer::Token token);
