@@ -32,9 +32,8 @@ namespace Bibble {
     }
 
     void Compiler::addImportPath(fs::path path) {
-        mImportPaths.push_back(std::move(path));
+        mImportManager.addSearchPath(std::move(path));
     }
-
 
     void Compiler::compile() {
         if (mInput.empty()) {
@@ -42,54 +41,40 @@ namespace Bibble {
             std::exit(1);
         }
 
+        symbol::SourceFile* existing = mImportManager.findExistingSourceFile(mInput);
+        if (existing == nullptr) { // The file has been parsed before
+            existing = mImportManager.importModule(mInput, mModuleName);
+
+            if (existing == nullptr) {
+                Log::Error(std::format("file '{}' not found", mInput.string()));
+                std::exit(1);
+            }
+        }
+
         if (mOutput.empty()) {
             mOutput = mInput;
             mOutput.replace_extension(".jmod");
         }
 
-        std::ifstream inputStream(mInput);
+        Type::Init();
 
-        if (!inputStream.is_open()) {
-            Log::Error(std::format("could not find file '{}'", mInput.string()));
+        bool hadErrors = false;
+        for (auto& node : existing->ast) {
+            node->typeCheck(existing->diag, hadErrors);
+        }
+        if (hadErrors) {
+            Log::Verbose("error occurred during type checking");
             std::exit(1);
         }
 
-        fs::path fullInputFilePath = fs::current_path() / mInput;
-        std::string fullInputPathName = fullInputFilePath.string();
-
-        std::stringstream buffer;
-        buffer << inputStream.rdbuf();
-        std::string text = buffer.str();
-
-        diagnostic::Diagnostics diag;
-        diag.setText(text);
-
-        Type::Init();
-
-        lexer::Lexer lexer(text, fullInputPathName);
-        auto tokens = lexer.lex();
-
-        symbol::ImportManager importManager;
-        for (const auto& path : mImportPaths) {
-            importManager.addModulePath(path);
-        }
-
-        symbol::ScopePtr globalScope = std::make_unique<symbol::Scope>(nullptr, "", true);
-        parser::Parser parser(tokens, diag, importManager, globalScope.get());
-
-        auto ast = parser.parse();
-
-        bool hadErrors = false;
-        for (auto& node : ast) {
-            node->typeCheck(diag, hadErrors);
-        }
-        if (hadErrors) std::exit(1);
-
         hadErrors = false;
-        for (auto& node : ast) {
-            node->semanticCheck(diag, hadErrors, true);
+        for (auto& node : existing->ast) {
+            node->semanticCheck(existing->diag, hadErrors, true);
         }
-        if (hadErrors) std::exit(1);
+        if (hadErrors) {
+            Log::Verbose("error occurred during semantic checking");
+            std::exit(1);
+        }
 
         auto module = std::make_unique<JesusASM::tree::ModuleNode>(1, mModuleName);
 
@@ -98,21 +83,16 @@ namespace Bibble {
         codegen::Context ctx(std::move(module));
         codegen::Builder builder(ctx);
 
-        for (auto& node : ast) {
-            node->codegen(builder, ctx, diag);
+        for (auto& node : existing->ast) {
+            node->codegen(builder, ctx, existing->diag);
         }
 
-        std::vector<JesusASM::tree::AbstractInsnNode*> debug;
-        for (auto it = builder.mInsertPoint->getFirst(); it != nullptr; it = it->getNext()) {
-            debug.push_back(it);
-        }
+        if (Log::verbose) ctx.getModule()->print(std::cout);
 
         moduleweb::ModuleBuilder moduleBuilder;
         moduleweb::ModuleInfo moduleInfo;
 
         ctx.getModule()->emit(moduleBuilder, moduleInfo);
-
-        if (Log::verbose) moduleInfo.print();
 
         fs::create_directories(mOutput.parent_path());
 

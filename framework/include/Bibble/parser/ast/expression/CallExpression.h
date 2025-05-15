@@ -23,6 +23,7 @@ namespace parser {
         symbol::FunctionSymbol* mBestViableFunction;
 
         bool mIsMemberFunction;
+        bool mIsStatement;
 
         symbol::FunctionSymbol* getBestViableFunction(diagnostic::Diagnostics& diag, bool& exit);
     };

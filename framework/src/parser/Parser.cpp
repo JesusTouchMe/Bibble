@@ -5,6 +5,7 @@
 #include "Bibble/parser/ast/expression/BinaryExpression.h"
 #include "Bibble/parser/ast/expression/BooleanLiteral.h"
 #include "Bibble/parser/ast/expression/CastExpression.h"
+#include "Bibble/parser/ast/expression/NullLiteral.h"
 #include "Bibble/parser/ast/expression/UnaryExpression.h"
 
 #include <cinttypes>
@@ -105,29 +106,63 @@ namespace parser {
     }
 
     Type* Parser::parseType(bool failable) {
-        (void) failable; // until i get nicer errors lol
+        auto ExpectToken = [this, failable](lexer::TokenType type) {
+            if (failable) {
+                return current().getTokenType() != type;
+            }  else {
+                expectToken(type);
+                return false;
+            }
+        };
+
+        lexer::Token token;
 
         auto startPosition = mPosition;
         Type* type = nullptr;
 
         if (current().getTokenType() == lexer::TokenType::Type) {
+            token = current();
             type = Type::Get(consume().getText());
         } else {
             //TODO: implement using full module names instead of an imported module name
-            expectToken(lexer::TokenType::Identifier);
+            if (ExpectToken(lexer::TokenType::Identifier)) {
+                mPosition = startPosition;
+                return nullptr;
+            }
 
-            lexer::SourceLocation start = current().getStartLocation();
-            std::string_view moduleName = mScope->findModuleName(consume().getText());
+            std::vector<std::string> names;
+            names.emplace_back(mScope->findModuleName(consume().getText()));
 
-            expectToken(lexer::TokenType::Dot);
-            consume();
+            while (current().getTokenType() == lexer::TokenType::DoubleColon) {
+                consume();
+                if (ExpectToken(lexer::TokenType::Identifier)) {
+                    mPosition = startPosition;
+                    return nullptr;
+                }
 
-            expectToken(lexer::TokenType::Identifier);
+                token = consume();
+                names.emplace_back(mScope->findModuleName(token.getText()));
+            }
 
-            lexer::SourceLocation end = current().getEndLocation();
-            std::string_view className = consume().getText();
+            token = peek(-1);
 
-            type = ClassType::Create(moduleName, className);
+            symbol::ClassSymbol* symbol;
+
+            if (names.size() == 1) symbol = mScope->findClass(names.back());
+            else symbol = mScope->findClass(names);
+            if (symbol != nullptr) type = symbol->getType();
+        }
+
+        if (type == nullptr) {
+            if (failable) {
+                mPosition = startPosition;
+                return nullptr;
+            } else {
+                mDiag.compilerError(token.getStartLocation(),
+                                    token.getEndLocation(),
+                                    std::format("unknown type name '{}{}{}'", fmt::bold, token.getText(), fmt::defaults));
+                std::exit(1);
+            }
         }
 
         return type;
@@ -152,6 +187,9 @@ namespace parser {
 
                 parseImport();
                 return nullptr;
+
+            case lexer::TokenType::ClassKeyword:
+                return parseClass(std::move(modifierTokens));
 
             case lexer::TokenType::Type:
             case lexer::TokenType::Identifier:
@@ -213,6 +251,8 @@ namespace parser {
 
             if (operatorToken.getTokenType() == lexer::TokenType::LeftParen) {
                 left = parseCallExpression(std::move(left));
+            } else if (operatorToken.getTokenType() == lexer::TokenType::Dot) {
+                left = parseMemberAccess(std::move(left));
             } else {
                 ASTNodePtr right = parseExpression(binaryOperatorPrecedence);
                 left = std::make_unique<BinaryExpression>(mScope, std::move(left), operatorToken.getTokenType(), std::move(right), std::move(operatorToken));
@@ -223,11 +263,21 @@ namespace parser {
     }
 
     ASTNodePtr Parser::parsePrimary() {
+        if (current().getTokenType() == lexer::TokenType::VarKeyword) {
+            consume();
+            return parseVariableDeclaration(nullptr);
+        }
+        if (Type* type = parseType(true)) {
+            return parseVariableDeclaration(type);
+        }
+
         switch (current().getTokenType()) {
             case lexer::TokenType::TrueKeyword:
                 return std::make_unique<BooleanLiteral>(mScope, true, consume());
             case lexer::TokenType::FalseKeyword:
                 return std::make_unique<BooleanLiteral>(mScope, false, consume());
+            case lexer::TokenType::NullKeyword:
+                return std::make_unique<NullLiteral>(mScope, consume());
 
             case lexer::TokenType::IntegerLiteral:
                 return parseIntegerLiteral();
@@ -237,6 +287,9 @@ namespace parser {
 
             case lexer::TokenType::Identifier:
                 return parseVariableExpression();
+
+            case lexer::TokenType::NewKeyword:
+                return parseNewExpression();
 
             case lexer::TokenType::LeftBrace:
                 return parseCompoundStatement();
@@ -271,6 +324,11 @@ namespace parser {
             modifiers.push_back(modifier);
         }
 
+        if (std::find(modifiers.begin(), modifiers.end(), FunctionModifier::Public) == modifiers.end() &&
+            std::find(modifiers.begin(), modifiers.end(), FunctionModifier::Private) == modifiers.end()) {
+            modifiers.push_back(FunctionModifier::Public);
+        }
+
         auto token = current();
         Type* returnType = parseType();
 
@@ -303,6 +361,7 @@ namespace parser {
         FunctionType* functionType = FunctionType::Create(returnType, std::move(argumentTypes));
 
         symbol::ScopePtr scope = std::make_unique<symbol::Scope>(mScope, "", false, returnType);
+        scope->currentVariableIndex = 0;
         mScope = scope.get();
 
         if (native) {
@@ -330,11 +389,253 @@ namespace parser {
     }
 
     ClassDeclarationPtr Parser::parseClass(std::vector<lexer::Token> modifierTokens) {
-        return nullptr;
+        std::vector<ClassModifier> modifiers;
+        for (auto& token : modifierTokens) {
+            auto modifier = GetClassModifier(token, mDiag);
+            if (std::find(modifiers.begin(), modifiers.end(), modifier) != modifiers.end()) {
+                mDiag.compilerError(token.getStartLocation(),
+                                    token.getEndLocation(),
+                                    std::format("duplicate class modifier: '{}{}{}'",
+                                                fmt::bold, token.getText(), fmt::defaults));
+                std::exit(1);
+            }
+
+            modifiers.push_back(modifier);
+        }
+
+        if (std::find(modifiers.begin(), modifiers.end(), ClassModifier::Public) == modifiers.end() &&
+            std::find(modifiers.begin(), modifiers.end(), ClassModifier::Private) == modifiers.end()) {
+            modifiers.push_back(ClassModifier::Public);
+        }
+
+        consume(); // class
+
+        auto token = current();
+        std::string name = std::string(consume().getText());
+
+        if (current().getTokenType() == lexer::TokenType::Semicolon) { // declaration
+            consume();
+            mScope->createClass(std::move(name), {}, { { 0, "#Init", FunctionType::Create(Type::Get("void"), {}) } }, {}, false);
+            return nullptr;
+        }
+
+        expectToken(lexer::TokenType::LeftBrace);
+        consume();
+
+        auto scope = std::make_unique<symbol::Scope>(mScope, name, true);
+        mScope = scope.get();
+
+        std::vector<ClassField> fields;
+        std::vector<ClassMethod> constructors;
+        std::vector<ClassMethod> methods;
+
+        while (current().getTokenType() != lexer::TokenType::RightBrace) {
+            modifierTokens.clear();
+
+            while (IsModifierToken(current())) {
+                modifierTokens.push_back(consume());
+            }
+
+            parseClassMember(name, fields, constructors, methods, modifierTokens);
+        }
+        consume();
+
+        mScope = scope->parent;
+
+        return std::make_unique<ClassDeclaration>(std::move(modifiers), std::move(name), std::move(fields), std::move(constructors), std::move(methods), std::move(scope), std::move(token));
     }
 
-    void Parser::parseClassMember(std::vector<ClassField>& fields, std::vector<ClassMethod>& methods, std::vector<lexer::Token> modifierTokens) {
+    void Parser::parseClassMember(std::string_view className, std::vector<ClassField>& fields,std::vector<ClassMethod>& constructors,
+                                  std::vector<ClassMethod>& methods, std::vector<lexer::Token> modifierTokens) {
+        auto token = current();
 
+        if (current().getTokenType() == lexer::TokenType::Identifier && current().getText() == className) { // constructor
+            consume();
+
+            expectToken(lexer::TokenType::LeftParen);
+            consume();
+
+            bool native = false;
+            std::vector<FunctionModifier> modifiers;
+            for (auto& modifierToken : modifierTokens) {
+                auto modifier = GetFunctionModifier(modifierToken, mDiag);
+                if (std::find(modifiers.begin(), modifiers.end(), modifier) != modifiers.end()) {
+                    mDiag.compilerError(modifierToken.getStartLocation(),
+                                        modifierToken.getEndLocation(),
+                                        std::format("duplicate method modifier: '{}{}{}'",
+                                                    fmt::bold, modifierToken.getText(), fmt::defaults));
+                    std::exit(1);
+                }
+
+                if (modifier == FunctionModifier::Native) native = true;
+                modifiers.push_back(modifier);
+            }
+
+            if (std::find(modifiers.begin(), modifiers.end(), FunctionModifier::Public) == modifiers.end() &&
+                std::find(modifiers.begin(), modifiers.end(), FunctionModifier::Private) == modifiers.end()) {
+                modifiers.push_back(FunctionModifier::Public);
+            }
+
+            std::vector<FunctionArgument> arguments;
+            std::vector<Type*> argumentTypes;
+
+            while (current().getTokenType() != lexer::TokenType::RightParen) {
+                Type* argumentType = parseType();
+
+                expectToken(lexer::TokenType::Identifier);
+                std::string argumentName = std::string(consume().getText());
+
+                arguments.emplace_back(argumentType, std::move(argumentName));
+                argumentTypes.push_back(argumentType);
+
+                if (current().getTokenType() != lexer::TokenType::RightParen) {
+                    expectToken(lexer::TokenType::Comma);
+                    consume();
+                }
+            }
+            consume();
+
+            FunctionType* functionType = FunctionType::Create(Type::Get("void"), std::move(argumentTypes));
+
+            symbol::ScopePtr scope = std::make_unique<symbol::Scope>(mScope, "", false, Type::Get("void"));
+            scope->currentVariableIndex = 0;
+            mScope = scope.get();
+
+            if (native) {
+                expectToken(lexer::TokenType::Semicolon);
+                consume();
+                mScope = scope->parent;
+
+                mDiag.compilerWarning("native-special",
+                                      token.getStartLocation(),
+                                      token.getEndLocation(),
+                                      std::format("constructor '{}{}{}' marked native",
+                                                  fmt::bold, className, fmt::defaults));
+
+                constructors.emplace_back(std::move(modifiers), "#Init", functionType, std::move(arguments), std::vector<ASTNodePtr>(), std::move(scope), std::move(token));
+                return;
+            }
+
+            expectToken(lexer::TokenType::LeftBrace);
+            consume();
+
+            std::vector<ASTNodePtr> body;
+            while (current().getTokenType() != lexer::TokenType::RightBrace) {
+                body.push_back(parseExpression());
+                expectToken(lexer::TokenType::Semicolon);
+                consume();
+            }
+            consume();
+
+            mScope = scope->parent;
+
+            constructors.emplace_back(std::move(modifiers), "#Init", functionType, std::move(arguments), std::move(body), std::move(scope), std::move(token));
+            return;
+        }
+
+        Type* type = parseType();
+
+        std::string name = std::string(consume().getText());
+
+        if (current().getTokenType() == lexer::TokenType::LeftParen) { // method
+            consume();
+
+            bool native = false;
+            std::vector<FunctionModifier> modifiers;
+            for (auto& modifierToken : modifierTokens) {
+                auto modifier = GetFunctionModifier(modifierToken, mDiag);
+                if (std::find(modifiers.begin(), modifiers.end(), modifier) != modifiers.end()) {
+                    mDiag.compilerError(modifierToken.getStartLocation(),
+                                        modifierToken.getEndLocation(),
+                                        std::format("duplicate method modifier: '{}{}{}'",
+                                                    fmt::bold, modifierToken.getText(), fmt::defaults));
+                    std::exit(1);
+                }
+
+                if (modifier == FunctionModifier::Native) native = true;
+                modifiers.push_back(modifier);
+            }
+
+            if (std::find(modifiers.begin(), modifiers.end(), FunctionModifier::Public) == modifiers.end() &&
+                std::find(modifiers.begin(), modifiers.end(), FunctionModifier::Private) == modifiers.end()) {
+                modifiers.push_back(FunctionModifier::Public);
+            }
+
+            std::vector<FunctionArgument> arguments;
+            std::vector<Type*> argumentTypes;
+
+            while (current().getTokenType() != lexer::TokenType::RightParen) {
+                Type* argumentType = parseType();
+
+                expectToken(lexer::TokenType::Identifier);
+                std::string argumentName = std::string(consume().getText());
+
+                arguments.emplace_back(argumentType, std::move(argumentName));
+                argumentTypes.push_back(argumentType);
+
+                if (current().getTokenType() != lexer::TokenType::RightParen) {
+                    expectToken(lexer::TokenType::Comma);
+                    consume();
+                }
+            }
+            consume();
+
+            FunctionType* functionType = FunctionType::Create(type, std::move(argumentTypes));
+
+            symbol::ScopePtr scope = std::make_unique<symbol::Scope>(mScope, "", false, type);
+            scope->currentVariableIndex = 0;
+            mScope = scope.get();
+
+            if (native) {
+                expectToken(lexer::TokenType::Semicolon);
+                consume();
+                mScope = scope->parent;
+
+                methods.emplace_back(std::move(modifiers), std::move(name), functionType, std::move(arguments), std::vector<ASTNodePtr>(), std::move(scope), std::move(token));
+                return;
+            }
+
+            expectToken(lexer::TokenType::LeftBrace);
+            consume();
+
+            std::vector<ASTNodePtr> body;
+            while (current().getTokenType() != lexer::TokenType::RightBrace) {
+                body.push_back(parseExpression());
+                expectToken(lexer::TokenType::Semicolon);
+                consume();
+            }
+            consume();
+
+            mScope = scope->parent;
+            methods.emplace_back(std::move(modifiers), std::move(name), functionType, std::move(arguments), std::move(body), std::move(scope), std::move(token));
+        } else { // field
+            std::vector<FieldModifier> modifiers;
+            for (auto& modifierToken : modifierTokens) {
+                auto modifier = GetFieldModifier(modifierToken, mDiag);
+                if (std::find(modifiers.begin(), modifiers.end(), modifier) != modifiers.end()) {
+                    mDiag.compilerError(modifierToken.getStartLocation(),
+                                        modifierToken.getEndLocation(),
+                                        std::format("duplicate field modifier: '{}{}{}'",
+                                                    fmt::bold, modifierToken.getText(), fmt::defaults));
+                    std::exit(1);
+                }
+
+                modifiers.push_back(modifier);
+            }
+
+            if (std::find(modifiers.begin(), modifiers.end(), FieldModifier::Public) == modifiers.end() &&
+                std::find(modifiers.begin(), modifiers.end(), FieldModifier::Private) == modifiers.end() &&
+                std::find(modifiers.begin(), modifiers.end(), FieldModifier::Protected) == modifiers.end()) {
+                modifiers.push_back(FieldModifier::Public);
+            }
+
+            //TODO: initial value
+
+            expectToken(lexer::TokenType::Semicolon);
+            consume();
+
+            fields.emplace_back(std::move(modifiers), type, std::move(name));
+        }
     }
 
     void Parser::parseImport() {
@@ -361,10 +662,11 @@ namespace parser {
         }
         consume();
 
-        symbol::ScopePtr scope = std::make_unique<symbol::Scope>(nullptr, moduleName, true);
+        symbol::ScopePtr scopePtr = std::make_unique<symbol::Scope>(nullptr, moduleName, true);
+        symbol::Scope* scope = scopePtr.get();
 
-        bool success = mImportManager.importModule(path, mDiag, scope.get());
-        if (!success) {
+        const symbol::SourceFile* source = mImportManager.importModule(path, moduleName);
+        if (source == nullptr) {
             mDiag.compilerError(start,
                                 end,
                                 std::format("'{}{}.bibble{}': file not found",
@@ -372,9 +674,7 @@ namespace parser {
             std::exit(1);
         }
 
-        mScope->children.push_back(scope.get());
-
-        mImportManager.seizeScope(std::move(scope));
+        mScope->children.push_back(scope);
 
         std::string shortModuleName;
         auto pos = moduleName.find_last_of('/');
@@ -385,7 +685,7 @@ namespace parser {
             shortModuleName = moduleName.substr(pos + 1);
         }
 
-        mScope->getTopLevelScope()->importedModuleNames[std::move(shortModuleName)] = std::move(moduleName);
+        mScope->findModuleScope()->importedModuleNames[std::move(shortModuleName)] = std::move(moduleName);
     }
 
     ASTNodePtr Parser::parseParenExpression() {
@@ -409,6 +709,14 @@ namespace parser {
         std::string text = std::string(token.getText());
 
         return std::make_unique<StringLiteral>(mScope, std::move(text), std::move(token));
+    }
+
+    MemberAccessPtr Parser::parseMemberAccess(ASTNodePtr classNode) {
+        expectToken(lexer::TokenType::Identifier);
+        auto token = consume();
+        std::string text = std::string(token.getText());
+
+        return std::make_unique<MemberAccess>(mScope, std::move(classNode), std::move(text), peek(-2), std::move(token));
     }
 
     VariableExpressionPtr Parser::parseVariableExpression() {
@@ -442,6 +750,29 @@ namespace parser {
         consume();
 
         return std::make_unique<CallExpression>(mScope, std::move(callee), std::move(parameters));
+    }
+
+    NewExpressionPtr Parser::parseNewExpression() {
+        auto token = consume(); // new
+
+        Type* type = parseType();
+
+        //TODO: unsafe new without constructor call
+
+        expectToken(lexer::TokenType::LeftParen);
+        consume();
+
+        std::vector<ASTNodePtr> parameters;
+        while (current().getTokenType() != lexer::TokenType::RightParen) {
+            parameters.push_back(parseExpression());
+            if (current().getTokenType() != lexer::TokenType::RightParen) {
+                expectToken(lexer::TokenType::Comma);
+                consume();
+            }
+        }
+        consume();
+
+        return std::make_unique<NewExpression>(mScope, type, std::move(parameters), std::move(token));
     }
 
     CompoundStatementPtr Parser::parseCompoundStatement() {
@@ -496,22 +827,71 @@ namespace parser {
         return std::make_unique<IfStatement>(std::move(scope) ,std::move(condition), std::move(body), std::move(elseBody), std::move(token));
     }
 
+    VariableDeclarationPtr Parser::parseVariableDeclaration(Type* type) {
+        expectToken(lexer::TokenType::Identifier);
+        auto token = current();
+        std::string name = std::string(consume().getText());
+
+        ASTNodePtr initialValue = nullptr;
+
+        if (current().getTokenType() == lexer::TokenType::Equal) {
+            consume();
+            initialValue = parseExpression();
+        }
+
+        return std::make_unique<VariableDeclaration>(mScope, type, std::move(name), std::move(initialValue), std::move(token));
+    }
+
     bool IsModifierToken(const lexer::Token& token) {
-        return token.getTokenType() == lexer::TokenType::NativeKeyword;
+        static constexpr std::array modifiers = {
+                lexer::TokenType::NativeKeyword,
+                lexer::TokenType::PublicKeyword,
+                lexer::TokenType::PrivateKeyword,
+        };
+
+        return std::find(modifiers.begin(), modifiers.end(), token.getTokenType()) != modifiers.end();
     }
 
     ClassModifier GetClassModifier(const lexer::Token& token, diagnostic::Diagnostics& diag) {
-        diag.fatalError("todo");
+        switch (token.getTokenType()) {
+            case lexer::TokenType::PublicKeyword:
+                return ClassModifier::Public;
+            case lexer::TokenType::PrivateKeyword:
+                return ClassModifier::Private;
+
+            default:
+                diag.compilerError(token.getStartLocation(),
+                                   token.getEndLocation(),
+                                   std::format("invalid class modifier: '{}{}{}'",
+                                               fmt::bold, token.getText(), fmt::defaults));
+                std::exit(1);
+        }
     }
 
     FieldModifier GetFieldModifier(const lexer::Token& token, diagnostic::Diagnostics& diag) {
-        diag.fatalError("todo");
+        switch (token.getTokenType()) {
+            case lexer::TokenType::PublicKeyword:
+                return FieldModifier::Public;
+            case lexer::TokenType::PrivateKeyword:
+                return FieldModifier::Private;
+
+            default:
+                diag.compilerError(token.getStartLocation(),
+                                   token.getEndLocation(),
+                                   std::format("invalid field modifier: '{}{}{}'",
+                                               fmt::bold, token.getText(), fmt::defaults));
+                std::exit(1);
+        }
     }
 
     FunctionModifier GetFunctionModifier(const lexer::Token& token, diagnostic::Diagnostics& diag) {
         switch (token.getTokenType()) {
             case lexer::TokenType::NativeKeyword:
                 return FunctionModifier::Native;
+            case lexer::TokenType::PublicKeyword:
+                return FunctionModifier::Public;
+            case lexer::TokenType::PrivateKeyword:
+                return FunctionModifier::Private;
 
             default:
                 diag.compilerError(token.getStartLocation(),

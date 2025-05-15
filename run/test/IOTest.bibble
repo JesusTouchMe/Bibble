@@ -1,6 +1,0 @@
-import std.IO;
-
-[Test]
-void testPrint() {
-    IO::print(2 + 2);
-}

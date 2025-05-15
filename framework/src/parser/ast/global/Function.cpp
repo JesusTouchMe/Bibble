@@ -17,13 +17,13 @@ namespace parser {
             rawModifiers |= static_cast<u16>(modifier);
         }
 
-        mScope->createFunction(mName, static_cast<FunctionType*>(mType), rawModifiers & MODULEWEB_FUNCTION_MODIFIER_PUBLIC);
+        mScope->createFunction(mName, static_cast<FunctionType*>(mType), rawModifiers);
 
-        u16 index = 0;
+        int* index = mOwnScope->findVariableIndex();
 
         for (auto& argument : mArguments) {
-            mOwnScope->locals.emplace(argument.name, symbol::LocalSymbol(index, argument.type));
-            index += argument.type->getStackSlots();
+            mOwnScope->locals.emplace(argument.name, symbol::LocalSymbol(*index, argument.type));
+            *index += argument.type->getStackSlots();
         }
     }
 

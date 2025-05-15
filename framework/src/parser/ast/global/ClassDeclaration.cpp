@@ -9,18 +9,30 @@ namespace parser {
         , type(type)
         , name(std::move(name)) {}
 
+    ClassMethod::ClassMethod(std::vector<FunctionModifier> modifiers, std::string name, FunctionType* type, std::vector<FunctionArgument> arguments,
+                             std::vector<ASTNodePtr> body, symbol::ScopePtr scope, lexer::Token errorToken)
+        : modifiers(std::move(modifiers))
+        , name(std::move(name))
+        , type(type)
+        , arguments(std::move(arguments))
+        , body(std::move(body))
+        , scope(std::move(scope))
+        , errorToken(std::move(errorToken)) {}
+
     ClassDeclaration::ClassDeclaration(std::vector<ClassModifier> modifiers, std::string name,
-                                       std::vector<ClassField> fields, std::vector<ClassMethod> methods,
+                                       std::vector<ClassField> fields, std::vector<ClassMethod> constructors, std::vector<ClassMethod> methods,
                                        symbol::ScopePtr scope, lexer::Token token)
                                        : ASTNode(scope->parent, nullptr, std::move(token))
                                        , mModifiers(std::move(modifiers))
                                        , mName(std::move(name))
                                        , mFields(std::move(fields))
+                                       , mConstructors(std::move(constructors))
                                        , mMethods(std::move(methods))
                                        , mOwnScope(std::move(scope)) {
-        mType = ClassType::Create(mOwnScope->getNames().front(), name);
+        mType = ClassType::Create(mOwnScope->findModuleScope()->name, mName);
 
         std::vector<symbol::ClassSymbol::Field> fieldSymbols;
+        std::vector<symbol::ClassSymbol::Method> constructorSymbols;
         std::vector<symbol::ClassSymbol::Method> methodSymbols;
 
         for (auto& field : mFields) {
@@ -30,6 +42,39 @@ namespace parser {
             }
 
             fieldSymbols.push_back({ fieldModifiers, field.name, field.type });
+        }
+
+        if (mConstructors.empty()) {
+            mConstructors.emplace_back(std::vector<FunctionModifier>(), "#Init", FunctionType::Create(Type::Get("void"), {}),
+                                       std::vector<FunctionArgument>(), std::vector<ASTNodePtr>(),
+                                       std::make_unique<symbol::Scope>(mOwnScope.get(), "", false, Type::Get("void")),
+                                       lexer::Token());
+            mConstructors.back().scope->currentVariableIndex = 0;
+        }
+
+        for (auto& method : mConstructors) {
+            u16 methodModifiers = 0;
+            for (auto modifier : method.modifiers) {
+                methodModifiers |= static_cast<u16>(modifier);
+            }
+
+            auto argumentTypes = method.type->getArgumentTypes();
+            argumentTypes.insert(argumentTypes.begin(), mType);
+            method.type = FunctionType::Create(method.type->getReturnType(), std::move(argumentTypes));
+
+            auto methodScope = method.scope->parent;
+            methodScope->createFunction(method.name, method.type, methodModifiers);
+
+            method.arguments.insert(method.arguments.begin(), FunctionArgument(mType, "this"));
+
+            int* index = method.scope->findVariableIndex();
+            for (auto& argument : method.arguments) {
+                method.scope->locals.emplace(argument.name, symbol::LocalSymbol(*index, argument.type));
+
+                *index += argument.type->getStackSlots();
+            }
+
+            constructorSymbols.push_back({ methodModifiers, method.name, method.type });
         }
 
         for (auto& method : mMethods) {
@@ -43,15 +88,15 @@ namespace parser {
             method.type = FunctionType::Create(method.type->getReturnType(), std::move(argumentTypes));
 
             auto methodScope = method.scope->parent;
-            methodScope->createFunction(method.name, method.type, methodModifiers & MODULEWEB_FUNCTION_MODIFIER_PUBLIC);
+            methodScope->createFunction(method.name, method.type, methodModifiers);
 
             method.arguments.insert(method.arguments.begin(), FunctionArgument(mType, "this"));
 
-            u16 index = 0;
+            int* index = method.scope->findVariableIndex();
             for (auto& argument : method.arguments) {
-                method.scope->locals.emplace(argument.name, symbol::LocalSymbol(index, argument.type));
+                method.scope->locals.emplace(argument.name, symbol::LocalSymbol(*index, argument.type));
 
-                index += argument.type->getStackSlots();
+                *index += argument.type->getStackSlots();
             }
 
             methodSymbols.push_back({ methodModifiers, method.name, method.type });
@@ -67,7 +112,8 @@ namespace parser {
             }
         }
 
-        mScope->createClass(mName, std::move(fieldSymbols), std::move(methodSymbols), isPublic);
+        mScope->createClass(mName, std::move(fieldSymbols), std::move(constructorSymbols), std::move(methodSymbols), isPublic);
+        mOwnScope->owner = mScope->findClass(mName);
     }
 
     void ClassDeclaration::codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag) {
@@ -87,6 +133,30 @@ namespace parser {
             classNode->fields.push_back(std::make_unique<JesusASM::tree::FieldNode>(fieldModifiers, field.name, field.type->getJesusASMType()->getDescriptor()));
         }
 
+        for (auto& method : mConstructors) {
+            u16 methodModifiers = 0;
+            for (auto modifier : method.modifiers) {
+                methodModifiers |= static_cast<u16>(modifier);
+            }
+
+            auto functionType = method.type->getJesusASMType();
+            auto function = builder.addFunction(methodModifiers, method.name, functionType);
+
+            if (methodModifiers & MODULEWEB_FUNCTION_MODIFIER_NATIVE) {
+                continue;
+            }
+
+            builder.setInsertPoint(&function->instructions);
+
+            for (auto& value : method.body) {
+                value->codegen(builder, ctx, diag);
+            }
+
+            if (auto type = static_cast<FunctionType*>(method.type); type->getReturnType()->isVoidType()) {
+                builder.createReturn(type->getReturnType());
+            }
+        }
+
         for (auto& method : mMethods) {
             u16 methodModifiers = 0;
             for (auto modifier : method.modifiers) {
@@ -96,7 +166,7 @@ namespace parser {
             auto functionType = method.type->getJesusASMType();
             auto function = builder.addFunction(methodModifiers, method.name, functionType);
 
-            if (method.body.empty()) {
+            if (methodModifiers & MODULEWEB_FUNCTION_MODIFIER_NATIVE) {
                 continue;
             }
 
@@ -105,15 +175,39 @@ namespace parser {
             for (auto& value : method.body) {
                 value->codegen(builder, ctx, diag);
             }
+
+            if (auto type = static_cast<FunctionType*>(method.type); type->getReturnType()->isVoidType()) {
+                builder.createReturn(type->getReturnType());
+            }
         }
     }
 
     void ClassDeclaration::semanticCheck(diagnostic::Diagnostics& diag, bool& exit, bool statement) {
+        for (auto& method : mConstructors) {
+            for (auto& node : method.body) {
+                node->semanticCheck(diag, exit, true);
+            }
+        }
 
+        for (auto& method : mMethods) {
+            for (auto& node : method.body) {
+                node->semanticCheck(diag, exit, true);
+            }
+        }
     }
 
     void ClassDeclaration::typeCheck(diagnostic::Diagnostics& diag, bool& exit) {
+        for (auto& method : mConstructors) {
+            for (auto& node : method.body) {
+                node->typeCheck(diag, exit);
+            }
+        }
 
+        for (auto& method : mMethods) {
+            for (auto& node : method.body) {
+                node->typeCheck(diag, exit);
+            }
+        }
     }
 
     bool ClassDeclaration::triviallyImplicitCast(diagnostic::Diagnostics& diag, Type* destType) {

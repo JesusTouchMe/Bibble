@@ -26,14 +26,23 @@ tokens {
     _string_literal
     _identifier
 
+    class
     import
+
+    new
+
     native
+    public
+    private
 
     if
     else
 
     true
     false
+    null
+
+    var
 
     bool Type
     boolean Type

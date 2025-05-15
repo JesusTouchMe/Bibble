@@ -3,6 +3,8 @@
 #ifndef BIBBLE_MAIN_INCLUDE_COMPILER_H
 #define BIBBLE_MAIN_INCLUDE_COMPILER_H
 
+#include "Bibble/symbol/Import.h"
+
 #include <JesusASM/tree/ModuleNode.h>
 
 #include <filesystem>
@@ -28,7 +30,7 @@ namespace Bibble {
         fs::path mInput;
         fs::path mOutput;
 
-        std::vector<fs::path> mImportPaths;
+        symbol::ImportManager mImportManager;
 
         void addModuleBloat(JesusASM::tree::ModuleNode* module);
     };

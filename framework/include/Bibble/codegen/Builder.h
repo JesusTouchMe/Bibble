@@ -5,6 +5,8 @@
 
 #include "Bibble/codegen/Context.h"
 
+#include "Bibble/diagnostic/Assert.h"
+
 #include "Bibble/type/FunctionType.h"
 
 #include <JesusASM/tree/ModuleNode.h>
@@ -20,7 +22,6 @@
 
 #include <JesusASM/type/Type.h>
 
-#include <cassert>
 #include <iostream>
 
 namespace Bibble {
@@ -61,6 +62,8 @@ namespace codegen {
 
         void createNot(::Type* type);
         void createNeg(::Type* type);
+
+        void createPop(::Type* type);
 
         void createDup(::Type* type);
         void createSwap(::Type* topType, ::Type* bottomType);
@@ -137,7 +140,7 @@ namespace codegen {
                 mContext.emplace(lhs.type);
                 insert<InsnNode>(WOpcode);
             } else {
-                std::cerr << "bible: unsupported type for binary instruction template: " << type->getName() << "\n";
+                std::cerr << "bibble: unsupported type for binary instruction template: " << type->getName() << "\n";
                 std::exit(1);
             }
         }
@@ -161,7 +164,7 @@ namespace codegen {
                 mContext.emplace(operand.type);
                 insert<InsnNode>(WOpcode);
             } else {
-                std::cerr << "bible: unsupported type for unary instruction template: " << type->getName() << "\n";
+                std::cerr << "bibble: unsupported type for unary instruction template: " << type->getName() << "\n";
                 std::exit(1);
             }
         }

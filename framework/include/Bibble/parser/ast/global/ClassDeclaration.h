@@ -34,6 +34,8 @@ namespace parser {
 
     // TODO: implement virtual methods everywhere
     struct ClassMethod {
+        ClassMethod(std::vector<FunctionModifier> modifiers, std::string name, FunctionType* type, std::vector<FunctionArgument> arguments, std::vector<ASTNodePtr> body, symbol::ScopePtr scope, lexer::Token errorToken);
+
         std::vector<FunctionModifier> modifiers; // TODO: method modifiers
         std::string name;
         FunctionType* type;
@@ -45,7 +47,7 @@ namespace parser {
 
     class ClassDeclaration : public ASTNode {
     public:
-        ClassDeclaration(std::vector<ClassModifier> modifiers, std::string name, std::vector<ClassField> fields, std::vector<ClassMethod> methods, symbol::ScopePtr scope, lexer::Token token);
+        ClassDeclaration(std::vector<ClassModifier> modifiers, std::string name, std::vector<ClassField> fields, std::vector<ClassMethod> constructors, std::vector<ClassMethod> methods, symbol::ScopePtr scope, lexer::Token token);
 
         void codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag) override;
 
@@ -58,6 +60,7 @@ namespace parser {
         std::vector<ClassModifier> mModifiers;
         std::string mName;
         std::vector<ClassField> mFields;
+        std::vector<ClassMethod> mConstructors;
         std::vector<ClassMethod> mMethods;
         symbol::ScopePtr mOwnScope;
     };

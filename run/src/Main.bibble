@@ -1,12 +1,25 @@
 import std.IO;
 import vm.System;
 
+class B;
+
+class A {
+    B other;
+}
+
+class B {
+    A other;
+}
+
 void main() {
     System::loadPlugin("Plugin");
 
-    if (1 == 1) {
-        IO::print(69);
-    } else {
-        IO::print(420);
-    }
+    A a = new A();
+    B b = new B();
+
+    a.other = b;
+    b.other = a;
+
+    a = null;
+    b = null;
 }

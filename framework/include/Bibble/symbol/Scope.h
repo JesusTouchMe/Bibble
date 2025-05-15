@@ -47,7 +47,7 @@ namespace symbol {
         };
 
         ClassSymbol() = default;
-        ClassSymbol(std::string moduleName, std::string name, std::vector<Field> fields, std::vector<Method> methods, bool isPublic);
+        ClassSymbol(std::string moduleName, std::string name, std::vector<Field> fields, std::vector<Method> constructors, std::vector<Method> methods, bool isPublic);
 
         ClassType* getType() const;
 
@@ -58,16 +58,17 @@ namespace symbol {
         std::string moduleName;
         std::string name;
         std::vector<Field> fields;
+        std::vector<Method> constructors;
         std::vector<Method> methods;
     };
 
     struct FunctionSymbol {
         FunctionSymbol() = default;
-        FunctionSymbol(std::string moduleName, std::string name, FunctionType* type, bool isPublic);
+        FunctionSymbol(std::string moduleName, std::string name, FunctionType* type, u16 modifiers);
 
         std::string moduleName;
         std::string name;
-        bool isPublic;
+        u16 modifiers;
         FunctionType* type;
     };
 
@@ -75,7 +76,6 @@ namespace symbol {
         Scope(Scope* parent, std::string name, bool isGlobalScope, Type* currentReturnType = nullptr);
 
         std::vector<std::string> getNames();
-        Scope* getTopLevelScope();
 
         std::vector<FunctionSymbol*> getCandidateFunctions(std::vector<std::string> names);
         std::vector<FunctionSymbol*> getCandidateFunctionsDown(std::string name);
@@ -83,20 +83,23 @@ namespace symbol {
 
         std::string_view findModuleName(std::string_view name);
 
+        Scope* findModuleScope();
+
         LocalSymbol* findLocal(std::string_view name);
         ClassSymbol* findClass(std::string_view name);
         ClassSymbol* findClass(std::vector<std::string> names);
         FunctionSymbol* findFunction(std::string_view name, FunctionType* type);
         FunctionSymbol* findFunction(std::vector<std::string> names, FunctionType* type);
         ClassSymbol* findOwner();
+        int* findVariableIndex();
 
         ClassSymbol* resolveClassSymbolDown(std::string_view name);
         ClassSymbol* resolveClassSymbolDown(std::vector<std::string> names);
         FunctionSymbol* resolveFunctionSymbolDown(std::string_view name, FunctionType* type);
         FunctionSymbol* resolveFunctionSymbolDown(std::vector<std::string> names, FunctionType* type);
 
-        void createClass(std::string className, std::vector<ClassSymbol::Field> fields, std::vector<ClassSymbol::Method> methods, bool isPublic);
-        void createFunction(std::string functionName, FunctionType* type, bool isPublic);
+        void createClass(std::string className, std::vector<ClassSymbol::Field> fields, std::vector<ClassSymbol::Method> constructors, std::vector<ClassSymbol::Method> methods, bool isPublic);
+        void createFunction(std::string functionName, FunctionType* type, u16 modifiers);
 
         std::string name;
 
@@ -107,6 +110,8 @@ namespace symbol {
 
         ClassSymbol* owner;
         Type* currentReturnType;
+
+        int currentVariableIndex = -1;
 
         std::unordered_map<std::string, std::string, StringViewHash, StringViewEqual> importedModuleNames;
 

@@ -12,12 +12,16 @@
 
 namespace diagnostic {
     constexpr std::array knownWarnings = {
-            "implicit"
+            "native-special",
+            "implicit",
+            "unused-value"
     };
 
     Diagnostics::Diagnostics() {
         mWarnings = {
-                "implicit"
+                "native-special",
+                "implicit",
+                "unused-value"
         };
     }
 

@@ -5,6 +5,8 @@
 #include "Bibble/type/ClassType.h"
 #include "Bibble/type/IntegerType.h"
 
+#include <ranges>
+
 namespace codegen {
     Builder::Builder(Context& ctx)
         : mContext(ctx)
@@ -86,6 +88,28 @@ namespace codegen {
         unaryInsn<Opcodes::NEG, Opcodes::LNEG, [](i64 operand) { return -operand; }>(type);
     }
 
+    void Builder::createPop(::Type* type) {
+        auto value = mContext.pop();
+        if (value.value) {
+            mInsertPoint->remove(value.value->origin);
+            return;
+        }
+
+        switch (type->getRuntimeType()) {
+            case Type::Category1_Primitive:
+                insert<InsnNode>(Opcodes::POP);
+                break;
+            case Type::Category2_Primitive:
+            case Type::Category2_Handle:
+            case Type::Category2_Reference:
+                insert<InsnNode>(Opcodes::POP2);
+                break;
+
+            default:
+                assert(false && "bad type");
+        }
+    }
+
     void Builder::createDup(::Type* type) {
         auto value = mContext.pop();
 
@@ -97,7 +121,6 @@ namespace codegen {
             return;
         }
 
-        mContext.emplace(value.type);
         if (value.type == Type::Category1_Primitive) {
             mContext.push(value);
             mContext.push(value);
@@ -196,6 +219,7 @@ namespace codegen {
         auto classType = static_cast<ClassType*>(type);
 
         insert<ClassInsnNode>(Opcodes::NEW, classType->getModuleName(), classType->getName());
+        mContext.emplace(Type::Category2_Reference);
     }
 
     void Builder::createNewArray(::Type* type) {
@@ -379,13 +403,23 @@ namespace codegen {
     void Builder::createCast(::Type* from, ::Type* to) {
         if (from == to) return;
 
+        if (to->isVoidType()) {
+            createPop(from);
+            return;
+        }
+
         auto value = mContext.pop();
 
         assert(value.type == from->getRuntimeType());
 
         if (value.value) {
             mInsertPoint->remove(value.value->origin);
-            createLdc(to, value.value->value);
+
+            if (to->isVoidType()) {
+                createPop(from);
+            } else {
+                createLdc(to, value.value->value);
+            }
             return;
         }
 
@@ -436,7 +470,7 @@ namespace codegen {
     }
 
     void Builder::createCall(std::string_view moduleName, std::string_view name, FunctionType* type) { // TODO: eventually attempt to inline function calls. maybe in a separate optimization stage
-        for (const auto& argument : type->getArgumentTypes()) {
+        for (auto* argument : std::ranges::reverse_view(type->getArgumentTypes())) {
             auto rtArgument = mContext.pop();
             assert(rtArgument.type == argument->getRuntimeType());
         }

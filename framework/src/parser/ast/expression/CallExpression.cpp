@@ -1,6 +1,7 @@
 // Copyright 2025 JesusTouchMe
 
 #include "Bibble/parser/ast/expression/CallExpression.h"
+#include "Bibble/parser/ast/expression/MemberAccess.h"
 #include "Bibble/parser/ast/expression/VariableExpression.h"
 
 #include <algorithm>
@@ -12,7 +13,8 @@ namespace parser {
         , mCallee(std::move(callee))
         , mParameters(std::move(parameters))
         , mBestViableFunction(nullptr)
-        , mIsMemberFunction(false) {}
+        , mIsMemberFunction(false)
+        , mIsStatement(false) {}
 
     void CallExpression::codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag) {
         if (mBestViableFunction == nullptr) {
@@ -27,21 +29,36 @@ namespace parser {
                 symbol::LocalSymbol* self = mScope->findLocal("this");
                 builder.createLoad(self->type, self->index);
             } else {
-                //TODO: member access
+                auto member = static_cast<MemberAccess*>(mCallee.get());
+                member->mClass->codegen(builder, ctx, diag);
             }
         }
 
-        for (auto& param : mParameters) {
-            param->codegen(builder,ctx, diag);
+        for (auto& parameter : mParameters) {
+            parameter->codegen(builder,ctx, diag);
         }
 
         builder.createCall(mBestViableFunction->moduleName, mBestViableFunction->name, mBestViableFunction->type);
+
+        if (mIsStatement && !mType->isVoidType()) {
+            builder.createPop(mType);
+        }
     }
 
     void CallExpression::semanticCheck(diagnostic::Diagnostics& diag, bool& exit, bool statement) {
         mCallee->semanticCheck(diag, exit, false);
         for (auto& parameter : mParameters) {
             parameter->semanticCheck(diag, exit, false);
+        }
+
+        mIsStatement = statement;
+
+        if (statement && (mBestViableFunction->modifiers & MODULEWEB_FUNCTION_MODIFIER_PURE)) {
+            mType = Type::Get("void");
+            diag.compilerWarning("unused-value",
+                                 mErrorToken.getStartLocation(),
+                                 mErrorToken.getEndLocation(),
+                                 "return value of pure function is ignored");
         }
     }
 
@@ -58,17 +75,17 @@ namespace parser {
         } else {
             auto functionType = mBestViableFunction->type;
             mType = functionType->getReturnType();
-            u16 index = 0;
+            u16 index = mIsMemberFunction ? 1 : 0;
             for (auto& parameter : mParameters) {
-                auto argumentType = functionType->getArgumentTypes()[index];
+                auto argumentType = functionType->getArgumentTypes()[index++];
                 if (parameter->getType() != argumentType) {
                     if (parameter->implicitCast(diag, argumentType)) {
                         parameter = Cast(parameter, argumentType);
                     } else {
                         diag.compilerError(mErrorToken.getStartLocation(),
                                            mErrorToken.getEndLocation(),
-                                           std::format("no matching function for call to '{}{}.{}(){}'",
-                                                       fmt::bold, mScope->getTopLevelScope()->name, mBestViableFunction->name, fmt::defaults));
+                                           std::format("no matching function for call to '{}{}::{}(){}'",
+                                                       fmt::bold, mBestViableFunction->moduleName, mBestViableFunction->name, fmt::defaults));
 
                         exit = true;
                     }
@@ -89,7 +106,7 @@ namespace parser {
 
     // million social credits to solar mist for making this code before i stole it
     symbol::FunctionSymbol* CallExpression::getBestViableFunction(diagnostic::Diagnostics& diag, bool& exit) {
-        if (dynamic_cast<VariableExpression*>(mCallee.get())) { // || MemberAccess*
+        if (dynamic_cast<VariableExpression*>(mCallee.get()) || dynamic_cast<MemberAccess*>(mCallee.get())) {
             std::vector<symbol::FunctionSymbol*> candidateFunctions;
             std::string errorName;
 
@@ -97,10 +114,38 @@ namespace parser {
                 errorName = var->getName();
 
                 if (var->isImplicitMember()) {
-                    diag.fatalError("unimplemented");
+                    auto scopeOwner = mScope->findOwner();
+                    ClassType* classType = scopeOwner->getType();
+
+                    std::vector<std::string> names = {
+                            std::string(classType->getModuleName()),
+                            std::string(classType->getName()),
+                            var->getName()
+                    };
+
+                    candidateFunctions = mScope->getCandidateFunctions(names);
+
+                    errorName = classType->getName();
+                    errorName += "::" + var->getName();
+
+                    mIsMemberFunction = true;
                 } else {
                     candidateFunctions = mScope->getCandidateFunctions(var->getNames());
                 }
+            } else if (auto memberAccess = dynamic_cast<MemberAccess*>(mCallee.get())) {
+                ClassType* classType = memberAccess->mClassType;
+                std::vector<std::string> names = {
+                        std::string(classType->getModuleName()),
+                        std::string(classType->getName()),
+                        memberAccess->mId
+                };
+
+                candidateFunctions = mScope->getCandidateFunctions(names);
+
+                errorName = classType->getName();
+                errorName += "::" + memberAccess->mId;
+
+                mIsMemberFunction = true;
             }
 
             for (auto it = candidateFunctions.begin(); it != candidateFunctions.end();) {
@@ -120,7 +165,7 @@ namespace parser {
             }
 
             std::vector<ViableFunction> viableFunctions;
-            for (auto& candidate : candidateFunctions) {
+            for (auto* candidate : candidateFunctions) {
                 int score = 0;
                 bool disallowed = false;
                 size_t i = mIsMemberFunction ? 1 : 0;

@@ -2,7 +2,7 @@
 
 #include "Bibble/codegen/Context.h"
 
-#include <cassert>
+#include "Bibble/diagnostic/Assert.h"
 
 namespace codegen {
     Context::Context(std::unique_ptr<ModuleNode> module)

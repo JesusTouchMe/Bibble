@@ -17,7 +17,19 @@ namespace parser {
 
     void VariableExpression::codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag) {
         if (mIsImplicitThis) {
-            diag.fatalError("Unimplemented");
+            auto scopeOwner = mScope->findOwner();
+
+            symbol::LocalSymbol* local = mScope->findLocal("this");
+            if (local == nullptr) {
+                diag.fatalError("scope is owned by a class, but no 'this' local exists");
+            }
+
+            builder.createLoad(local->type, local->index);
+
+            auto field = scopeOwner->getField(mNames.back());
+            builder.createGetField(scopeOwner->getType(), field->type, field->name);
+
+            return;
         }
 
         if (isQualified()) diag.fatalError("Unimplemented 2");
@@ -26,7 +38,7 @@ namespace parser {
         if (local == nullptr) {
             diag.compilerError(mErrorToken.getStartLocation(),
                                mErrorToken.getEndLocation(),
-                               std::format("couldn't find local variable '{}{}{}' (this message should never be seen but you never know)",
+                               std::format("couldn't find local variable '{}{}{}'",
                                            fmt::bold, mNames.back(), fmt::defaults));
             std::exit(1);
         }
@@ -41,7 +53,7 @@ namespace parser {
     void VariableExpression::typeCheck(diagnostic::Diagnostics& diag, bool& exit) {
         symbol::ClassSymbol* scopeOwner = mScope->findOwner();
 
-        if (scopeOwner != nullptr) {
+        if (scopeOwner != nullptr && !isQualified() && mScope->findLocal(mNames.back()) == nullptr) {
             auto field = scopeOwner->getField(mNames.back());
             if (field != nullptr) {
                 mType = field->type;

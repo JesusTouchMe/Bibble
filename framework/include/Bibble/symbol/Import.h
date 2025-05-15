@@ -13,18 +13,25 @@
 namespace fs = std::filesystem;
 
 namespace symbol {
+    struct SourceFile {
+        fs::path path;
+        std::vector<parser::ASTNodePtr> ast;
+        ScopePtr scope;
+        diagnostic::Diagnostics diag;
+    };
+
     class ImportManager {
     public:
         ImportManager();
 
-        void addModulePath(fs::path path);
-        bool importModule(fs::path path, diagnostic::Diagnostics& diag, Scope* scope);
+        void addSearchPath(fs::path path);
+        SourceFile* importModule(fs::path path, std::string moduleName);
 
-        void seizeScope(ScopePtr scope);
+        SourceFile* findExistingSourceFile(const fs::path& path);
 
     private:
-        std::vector<fs::path> mModulePaths;
-        std::vector<ScopePtr> mScopes;
+        std::vector<fs::path> mSearchPaths;
+        std::vector<SourceFile> mSourceFiles;
     };
 }
 

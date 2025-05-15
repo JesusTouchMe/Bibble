@@ -10,11 +10,12 @@ namespace symbol {
         : index(index)
         , type(type) {}
 
-    ClassSymbol::ClassSymbol(std::string moduleName, std::string name, std::vector<Field> fields, std::vector<Method> methods, bool isPublic)
+    ClassSymbol::ClassSymbol(std::string moduleName, std::string name, std::vector<Field> fields, std::vector<Method> constructors, std::vector<Method> methods, bool isPublic)
         : isPublic(isPublic)
         , moduleName(std::move(moduleName))
         , name(std::move(name))
         , fields(std::move(fields))
+        , constructors(std::move(constructors))
         , methods(std::move(methods)) {
         std::replace(moduleName.begin(), moduleName.end(), '.', '/');
     }
@@ -41,11 +42,11 @@ namespace symbol {
         return nullptr;
     }
 
-    FunctionSymbol::FunctionSymbol(std::string moduleName, std::string name, FunctionType* type, bool isPublic)
+    FunctionSymbol::FunctionSymbol(std::string moduleName, std::string name, FunctionType* type, u16 modifiers)
         : moduleName(std::move(moduleName))
         , name(std::move(name))
         , type(type)
-        , isPublic(isPublic) {
+        , modifiers(modifiers) {
         std::replace(moduleName.begin(), moduleName.end(), '.', '/');
     }
 
@@ -73,21 +74,14 @@ namespace symbol {
         return names;
     }
 
-    Scope* Scope::getTopLevelScope() {
-        Scope* topLevelScope = this;
-        while (topLevelScope->parent != nullptr) {
-            topLevelScope = topLevelScope->parent;
-        }
-        return topLevelScope;
-    }
-
     std::vector<FunctionSymbol*> Scope::getCandidateFunctions(std::vector<std::string> names) {
         std::vector<std::string> activeNames = getNames();
         std::vector<FunctionSymbol*> candidateFunctions;
-        Scope* topLevelScope = getTopLevelScope();
+
+        Scope* moduleScope = findModuleScope();
 
         do {
-            auto candidates = topLevelScope->getCandidateFunctionsDown(names);
+            auto candidates = moduleScope->getCandidateFunctionsDown(names);
             std::copy(candidates.begin(), candidates.end(), std::back_inserter(candidateFunctions));
 
             if (activeNames.empty()) break;
@@ -165,6 +159,18 @@ namespace symbol {
         return name;
     }
 
+    Scope* Scope::findModuleScope() {
+        Scope* scope = this;
+        Scope* moduleScope = nullptr;
+
+        while (scope != nullptr) {
+            if (!scope->name.empty()) moduleScope = scope;
+            scope = scope->parent;
+        }
+
+        return moduleScope;
+    }
+
     LocalSymbol* Scope::findLocal(std::string_view name) {
         Scope* scope = this;
         while (scope != nullptr) {
@@ -190,17 +196,17 @@ namespace symbol {
             scope = scope->parent;
         }
 
-        if (auto sym = getTopLevelScope()->resolveClassSymbolDown(name))
+        if (auto sym = findModuleScope()->resolveClassSymbolDown(name)) return sym;
         return nullptr;
     }
 
     ClassSymbol* Scope::findClass(std::vector<std::string> names) {
         std::vector<std::string> activeNames = getNames();
 
-        Scope* topLevelScope = getTopLevelScope();
+        Scope* moduleScope = findModuleScope();
 
         do {
-            if (auto symbol = topLevelScope->resolveClassSymbolDown(names)) return symbol;
+            if (auto symbol = moduleScope->resolveClassSymbolDown(names)) return symbol;
 
             if (activeNames.empty()) break;
 
@@ -225,17 +231,17 @@ namespace symbol {
             scope = scope->parent;
         }
 
-        if (auto sym = getTopLevelScope()->resolveFunctionSymbolDown(name, type)) return sym;
+        if (auto sym = findModuleScope()->resolveFunctionSymbolDown(name, type)) return sym;
         return nullptr;
     }
 
     FunctionSymbol* Scope::findFunction(std::vector<std::string> names, FunctionType* type) {
         std::vector<std::string> activeNames = getNames();
 
-        symbol::Scope* topLevelScope = getTopLevelScope();
+        Scope* moduleScope = findModuleScope();
 
         do {
-            if (auto symbol = topLevelScope->resolveFunctionSymbolDown(names, type)) return symbol;
+            if (auto symbol = moduleScope->resolveFunctionSymbolDown(names, type)) return symbol;
 
             if (activeNames.empty()) break;
 
@@ -251,6 +257,19 @@ namespace symbol {
         while (scope != nullptr) {
             if (scope->owner != nullptr) {
                 return scope->owner;
+            }
+
+            scope = scope->parent;
+        }
+
+        return nullptr;
+    }
+
+    int* Scope::findVariableIndex() {
+        Scope* scope = this;
+        while (scope != nullptr) {
+            if (scope->currentVariableIndex > -1) {
+                return &scope->currentVariableIndex;
             }
 
             scope = scope->parent;
@@ -328,11 +347,11 @@ namespace symbol {
         return nullptr;
     }
 
-    void Scope::createClass(std::string className, std::vector<ClassSymbol::Field> fields, std::vector<ClassSymbol::Method> methods, bool isPublic) {
-        classes[className] = ClassSymbol(getTopLevelScope()->name, std::move(className), std::move(fields), std::move(methods), isPublic);
+    void Scope::createClass(std::string className, std::vector<ClassSymbol::Field> fields, std::vector<ClassSymbol::Method> constructors, std::vector<ClassSymbol::Method> methods, bool isPublic) {
+        classes[className] = ClassSymbol(findModuleScope()->name, className, std::move(fields), std::move(constructors), std::move(methods), isPublic);
     }
 
-    void Scope::createFunction(std::string functionName, FunctionType* type, bool isPublic) {
-        functions.emplace_back(getTopLevelScope()->name, std::move(functionName), type, isPublic);
+    void Scope::createFunction(std::string functionName, FunctionType* type, u16 modifiers) {
+        functions.emplace_back(findModuleScope()->name, std::move(functionName), type, modifiers);
     }
 }

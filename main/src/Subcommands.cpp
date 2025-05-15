@@ -125,14 +125,14 @@ namespace commands {
                 auto inputTime = fs::last_write_time(input);
                 auto outputTime = fs::last_write_time(output);
 
-                if (inputTime <= outputTime) return; // already compiled. skipping
+                //if (inputTime <= outputTime) return; // already compiled. skipping
             }
 
             std::string moduleName = fs::relative(input, srcDir).string();
             std::replace(moduleName.begin(), moduleName.end(), '\\', '.');
             std::replace(moduleName.begin(), moduleName.end(), '/', '.');
 
-            moduleName = moduleName.substr(0, moduleName.find_last_of('.'));
+            moduleName = moduleName.substr(0, moduleName.find_last_of('.' ));
 
             compiler.setModuleName(std::move(moduleName));
             compiler.setInput(input);
@@ -146,10 +146,11 @@ namespace commands {
 
     static void RunCompiler(Bibble::Compiler& compiler, const fs::path& srcDir, const fs::path& buildDir) {
         for (const auto& entry : fs::recursive_directory_iterator(srcDir)) {
-            fs::path output = buildDir / srcDir / fs::relative(entry, srcDir);
+            fs::path relative = fs::relative(entry, srcDir);
+            fs::path output = buildDir / srcDir / relative;
             output.replace_extension(".jmod");
 
-            Compile(compiler, srcDir, entry, output);
+            Compile(compiler, srcDir, relative, output);
         }
     }
 
@@ -176,7 +177,7 @@ namespace commands {
 
             return 0;
         } catch (const toml::parse_error& error) {
-                Log::Error(std::format("error parsing project configuration: {}", error.description()));
+            Log::Error(std::format("error parsing project configuration: {}", error.description()));
             return 1;
         }
     }
@@ -252,7 +253,12 @@ namespace commands {
                     return 1;
                 }
 
-                mainFunction->invoke<void>();
+                JesusVM::Thread* mainThread = JesusVM::Threading::GetMainThread();
+
+                mainThread->setFunction(mainFunction);
+                mainThread->start();
+
+                JesusVM::Threading::Epoch::SyncAllEpochs();
 
                 JesusVM::Threading::WaitForAllThreads();
 

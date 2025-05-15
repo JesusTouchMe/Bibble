@@ -10,14 +10,17 @@
 #include "Bibble/type/VoidType.h"
 #include "Bibble/type/Type.h"
 
-
 #include <unordered_map>
+
+bool init = false;
 
 std::unordered_map<std::string, std::unique_ptr<Type>, StringViewHash, StringViewEqual> types;
 extern std::vector<std::unique_ptr<ClassType>> classTypes;
 extern std::vector<std::unique_ptr<FunctionType>> functionTypes;
 
 void Type::Init() {
+    if (init) return;
+
     JesusASM::Type::Init();
 
     types["byte"] = std::make_unique<IntegerType>("byte", IntegerType::Size::Byte);
@@ -32,6 +35,8 @@ void Type::Init() {
     types["void"] = std::make_unique<VoidType>();
 
     types["string"] = std::make_unique<ClassType>("std.Primitives", "String");
+
+    init = true;
 }
 
 void Type::Reset() {

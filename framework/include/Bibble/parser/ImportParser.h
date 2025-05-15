@@ -16,6 +16,7 @@
 #include <vector>
 
 namespace parser {
+    // Currently unused, but exists for the future when I wanna make all symbols be forward declared
     class ImportParser {
     public:
         ImportParser(std::vector<lexer::Token>& tokens, diagnostic::Diagnostics& diag, symbol::ImportManager& importManager, symbol::Scope* globalScope);
@@ -47,7 +48,9 @@ namespace parser {
 
         FunctionPtr parseFunction(std::vector<lexer::Token> modifierTokens);
         ClassDeclarationPtr parseClass(std::vector<lexer::Token> modifierTokens);
-        void parseClassMember(std::vector<ClassField>& fields, std::vector<ClassMethod>& methods, std::vector<lexer::Token> modifierTokens);
+        void parseClassMember(std::string_view className, std::vector<ClassField>& fields,
+                              std::vector<ClassMethod>& constructors, std::vector<ClassMethod>& methods,
+                              const std::vector<lexer::Token>& modifierTokens);
     };
 
     void ImportParser::expectAnyToken(lexer::TokenType first, auto... rest) {

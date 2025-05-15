@@ -46,7 +46,12 @@ set(SOURCES
         src/parser/ast/expression/CastExpression.cpp
         src/parser/ast/expression/BooleanLiteral.cpp
         src/parser/ast/statement/IfStatement.cpp
-        src/parser/ast/statement/CompoundStatement.cpp)
+        src/parser/ast/statement/CompoundStatement.cpp
+    src/parser/ast/statement/VariableDeclaration.cpp
+    src/parser/ast/expression/MemberAccess.cpp
+    src/parser/ast/expression/NewExpression.cpp
+    src/diagnostic/Assert.cpp
+    src/parser/ast/expression/NullLiteral.cpp)
 set(HEADERS
     include/Bibble/diagnostic/Diagnostic.h
     include/Bibble/type/Type.h
@@ -77,7 +82,12 @@ set(HEADERS
         include/Bibble/parser/ast/expression/CastExpression.h
         include/Bibble/parser/ast/expression/BooleanLiteral.h
         include/Bibble/parser/ast/statement/IfStatement.h
-        include/Bibble/parser/ast/statement/CompoundStatement.h)
+        include/Bibble/parser/ast/statement/CompoundStatement.h
+    include/Bibble/parser/ast/statement/VariableDeclaration.h
+    include/Bibble/parser/ast/expression/MemberAccess.h
+    include/Bibble/parser/ast/expression/NewExpression.h
+    include/Bibble/diagnostic/Assert.h
+    include/Bibble/parser/ast/expression/NullLiteral.h)
 
 source_group(TREE ${PROJECT_SOURCE_DIR} FILES ${SOURCES} ${HEADERS})
 

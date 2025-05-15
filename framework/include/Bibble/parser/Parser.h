@@ -7,11 +7,14 @@
 
 #include "Bibble/parser/ast/expression/CallExpression.h"
 #include "Bibble/parser/ast/expression/Integerliteral.h"
+#include "Bibble/parser/ast/expression/MemberAccess.h"
+#include "Bibble/parser/ast/expression/NewExpression.h"
 #include "Bibble/parser/ast/expression/StringLiteral.h"
 #include "Bibble/parser/ast/expression/VariableExpression.h"
 
 #include "Bibble/parser/ast/statement/CompoundStatement.h"
 #include "Bibble/parser/ast/statement/IfStatement.h"
+#include "Bibble/parser/ast/statement/VariableDeclaration.h"
 
 #include "Bibble/parser/ast/global/ClassDeclaration.h"
 #include "Bibble/parser/ast/global/Function.h"
@@ -57,18 +60,23 @@ namespace parser {
 
         FunctionPtr parseFunction(std::vector<lexer::Token> modifierTokens);
         ClassDeclarationPtr parseClass(std::vector<lexer::Token> modifierTokens);
-        void parseClassMember(std::vector<ClassField>& fields, std::vector<ClassMethod>& methods, std::vector<lexer::Token> modifierTokens);
+        void parseClassMember(std::string_view className, std::vector<ClassField>& fields,
+                              std::vector<ClassMethod>& constructors, std::vector<ClassMethod>& methods,
+                              std::vector<lexer::Token> modifierTokens);
 
         void parseImport();
 
         ASTNodePtr parseParenExpression();
         IntegerLiteralPtr parseIntegerLiteral();
         StringLiteralPtr parseStringLiteral();
+        MemberAccessPtr parseMemberAccess(ASTNodePtr classNode);
         VariableExpressionPtr parseVariableExpression();
         CallExpressionPtr parseCallExpression(ASTNodePtr callee);
+        NewExpressionPtr parseNewExpression();
 
         CompoundStatementPtr parseCompoundStatement();
         IfStatementPtr parseIfStatement();
+        VariableDeclarationPtr parseVariableDeclaration(Type* type); // type is parsed to see if it's a variable lmao
     };
 
     void Parser::expectAnyToken(lexer::TokenType first, auto... rest) {

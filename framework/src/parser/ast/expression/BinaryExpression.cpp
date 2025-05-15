@@ -1,6 +1,8 @@
 // Copyright 2025 JesusTouchMe
 
 #include "Bibble/parser/ast/expression/BinaryExpression.h"
+#include "Bibble/parser/ast/expression/MemberAccess.h"
+#include "Bibble/parser/ast/expression/VariableExpression.h"
 
 #include <format>
 
@@ -50,6 +52,9 @@ namespace parser {
                 mOperator = Operator::GreaterEqual;
                 break;
 
+            case lexer::TokenType::Equal:
+                mOperator = Operator::Assign;
+
             default:
                 break;
         }
@@ -62,8 +67,10 @@ namespace parser {
             , mRight(std::move(right)) {}
 
     void BinaryExpression::codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag) {
-        mLeft->codegen(builder, ctx, diag);
-        mRight->codegen(builder, ctx, diag);
+        if (mOperator != Operator::Assign) {
+            mLeft->codegen(builder, ctx, diag);
+            mRight->codegen(builder, ctx, diag);
+        }
 
         switch (mOperator) {
             case Operator::Add:
@@ -126,6 +133,49 @@ namespace parser {
                 break;
             case Operator::GreaterEqual:
                 builder.createCmpGE(mLeft->getType());
+                break;
+
+            case Operator::Assign:
+                if (auto variableExpression = dynamic_cast<VariableExpression*>(mLeft.get())) {
+                    if (variableExpression->isImplicitMember()) {
+                        auto scopeOwner = mScope->findOwner();
+
+                        symbol::LocalSymbol* local = mScope->findLocal("this");
+                        if (local == nullptr) {
+                            diag.fatalError("scope is owned by a class, but no 'this' local exists");
+                        }
+
+                        builder.createLoad(local->type, local->index);
+
+                        mRight->codegen(builder, ctx, diag);
+
+                        auto field = scopeOwner->getField(variableExpression->getName());
+                        builder.createSetField(scopeOwner->getType(), field->type, field->name);
+                    } else {
+                        symbol::LocalSymbol* local = mScope->findLocal(variableExpression->getName());
+                        if (local == nullptr) {
+                            diag.compilerError(mErrorToken.getStartLocation(),
+                                               mErrorToken.getEndLocation(),
+                                               std::format("couldn't find local variable '{}{}{}'",
+                                                           fmt::bold, variableExpression->getName(), fmt::defaults));
+                            std::exit(1);
+                        }
+
+                        mRight->codegen(builder, ctx, diag);
+
+                        builder.createStore(local->type, local->index);
+                    }
+                } else if (auto memberAccess = dynamic_cast<MemberAccess*>(mLeft.get())) {
+                    memberAccess->getClass()->codegen(builder, ctx, diag);
+
+                    mRight->codegen(builder, ctx, diag);
+
+                    auto field = memberAccess->getClassSymbol()->getField(memberAccess->getId());
+                    builder.createSetField(memberAccess->getClassType(), field->type, field->name);
+                } else {
+                    diag.fatalError("TODO: error message");
+                }
+
                 break;
         }
     }
@@ -210,6 +260,23 @@ namespace parser {
                 }
 
                 mType = Type::Get("bool");
+                break;
+
+            case Operator::Assign:
+                if (mLeft->getType() != mRight->getType()) {
+                    if (mRight->implicitCast(diag, mLeft->getType())) {
+                        mRight = Cast(mRight, mLeft->getType());
+                    } else {
+                        diag.compilerError(mErrorToken.getStartLocation(),
+                                           mErrorToken.getEndLocation(),
+                                           std::format("no match for '{}operator {}{}' with the given types '{}{}{}' and '{}{}{}''",
+                                                       fmt::bold, mErrorToken.getName(), fmt::defaults,
+                                                       fmt::bold, mLeft->getType()->getName(), fmt::defaults,
+                                                       fmt::bold, mRight->getType()->getName(), fmt::defaults));
+                        exit = true;
+                    }
+                }
+
                 break;
         }
     }
