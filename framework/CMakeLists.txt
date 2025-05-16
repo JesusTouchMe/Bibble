@@ -91,25 +91,25 @@ set(HEADERS
 
 source_group(TREE ${PROJECT_SOURCE_DIR} FILES ${SOURCES} ${HEADERS})
 
-add_library(bible-framework ${SOURCES} ${HEADERS})
-add_library(Bibble::framework ALIAS bible-framework)
+add_library(bibble-framework ${SOURCES} ${HEADERS})
+add_library(Bibble::framework ALIAS bibble-framework)
 
-vlex_generate(bible-framework src/lexer/Lexer.vlex src/lexer include/Bibble/lexer)
+vlex_generate(bibble-framework src/lexer/Lexer.vlex src/lexer include/Bibble/lexer)
 
-target_include_directories(bible-framework
+target_include_directories(bibble-framework
     PUBLIC
         include
 )
 
-target_compile_features(bible-framework PUBLIC cxx_std_20)
+target_compile_features(bibble-framework PUBLIC cxx_std_20)
 
 if(WIN32)
-    target_compile_definitions(bible-framework PUBLIC PLATFORM_WINDOWS)
+    target_compile_definitions(bibble-framework PUBLIC PLATFORM_WINDOWS)
 elseif(APPLE)
-    target_compile_definitions(bible-framework PUBLIC PLATFORM_MACOS)
+    target_compile_definitions(bibble-framework PUBLIC PLATFORM_MACOS)
 elseif(UNIX AND NOT APPLE)
-    target_compile_definitions(bible-framework PUBLIC PLATFORM_LINUX)
+    target_compile_definitions(bibble-framework PUBLIC PLATFORM_LINUX)
 endif()
 
-add_dependencies(bible-framework JesusASM::framework)
-target_link_libraries(bible-framework PUBLIC JesusASM::framework)
+add_dependencies(bibble-framework JesusASM::framework)
+target_link_libraries(bibble-framework PUBLIC JesusASM::framework)
