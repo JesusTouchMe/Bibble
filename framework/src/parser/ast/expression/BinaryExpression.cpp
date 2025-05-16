@@ -240,12 +240,20 @@ namespace parser {
                         }
 
                         mType = mLeft->getType();
-                    } else {
+                    } else if (mRight->getType()->getStackSlots() > mLeft->getType()->getStackSlots()) {
                         if (mLeft->implicitCast(diag, mRight->getType())) {
                             mLeft = Cast(mLeft, mRight->getType());
                         }
 
                         mType = mRight->getType();
+                    } else {
+                        if (mRight->implicitCast(diag, mLeft->getType())) {
+                            mRight = Cast(mRight, mLeft->getType());
+                            mType = mLeft->getType();
+                        } else if (mLeft->implicitCast(diag, mRight->getType())) {
+                            mLeft = Cast(mLeft, mRight->getType());
+                            mType = mRight->getType();
+                        }
                     }
                 }
 

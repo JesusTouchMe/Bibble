@@ -39,13 +39,6 @@ void Type::Init() {
     init = true;
 }
 
-void Type::Reset() {
-    types.clear();
-    classTypes.clear();
-    functionTypes.clear();
-}
-
-
 bool Type::Exists(std::string_view name) {
     return types.contains(name);
 }

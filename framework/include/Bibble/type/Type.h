@@ -49,7 +49,6 @@ public:
     std::string_view getName() const { return mName; }
 
     static void Init();
-    static void Reset();
     static bool Exists(std::string_view name);
     static Type* Get(std::string_view name);
 

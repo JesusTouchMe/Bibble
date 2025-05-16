@@ -18,6 +18,7 @@ namespace symbol {
         std::vector<parser::ASTNodePtr> ast;
         ScopePtr scope;
         diagnostic::Diagnostics diag;
+        std::string sourceCode;
     };
 
     class ImportManager {

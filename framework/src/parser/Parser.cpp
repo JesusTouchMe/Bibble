@@ -449,7 +449,7 @@ namespace parser {
                                   std::vector<ClassMethod>& methods, std::vector<lexer::Token> modifierTokens) {
         auto token = current();
 
-        if (current().getTokenType() == lexer::TokenType::Identifier && current().getText() == className) { // constructor
+        if (current().getTokenType() == lexer::TokenType::Identifier && current().getText() == className && peek(1).getTokenType() == lexer::TokenType::LeftParen) { // constructor
             consume();
 
             expectToken(lexer::TokenType::LeftParen);
@@ -662,10 +662,7 @@ namespace parser {
         }
         consume();
 
-        symbol::ScopePtr scopePtr = std::make_unique<symbol::Scope>(nullptr, moduleName, true);
-        symbol::Scope* scope = scopePtr.get();
-
-        const symbol::SourceFile* source = mImportManager.importModule(path, moduleName);
+        symbol::SourceFile* source = mImportManager.importModule(path, moduleName);
         if (source == nullptr) {
             mDiag.compilerError(start,
                                 end,
@@ -674,7 +671,7 @@ namespace parser {
             std::exit(1);
         }
 
-        mScope->children.push_back(scope);
+        mScope->children.push_back(source->scope.get());
 
         std::string shortModuleName;
         auto pos = moduleName.find_last_of('/');

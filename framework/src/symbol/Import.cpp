@@ -47,7 +47,7 @@ namespace symbol {
         std::string text = buffer.str();
 
         diagnostic::Diagnostics diag;
-        diag.setText(buffer.str());
+        diag.setText(text);
         //diag.setImported(true);
 
         std::string fileName = path.string();
@@ -60,7 +60,7 @@ namespace symbol {
 
         auto ast = parser.parse();
 
-        mSourceFiles.emplace_back(std::move(fullPath), std::move(ast), std::move(scope), std::move(diag));
+        mSourceFiles.emplace_back(std::move(fullPath), std::move(ast), std::move(scope), std::move(diag), std::move(text));
 
         return &mSourceFiles.back();
     }

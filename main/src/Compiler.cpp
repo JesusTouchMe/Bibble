@@ -41,8 +41,10 @@ namespace Bibble {
             std::exit(1);
         }
 
+        Type::Init();
+
         symbol::SourceFile* existing = mImportManager.findExistingSourceFile(mInput);
-        if (existing == nullptr) { // The file has been parsed before
+        if (existing == nullptr) { // The file hasn't been parsed before
             existing = mImportManager.importModule(mInput, mModuleName);
 
             if (existing == nullptr) {
@@ -55,8 +57,6 @@ namespace Bibble {
             mOutput = mInput;
             mOutput.replace_extension(".jmod");
         }
-
-        Type::Init();
 
         bool hadErrors = false;
         for (auto& node : existing->ast) {
@@ -100,8 +100,6 @@ namespace Bibble {
         moduleweb::FileOutStream out(outFileName);
 
         moduleInfo.emit(out);
-
-        Type::Reset();
     }
 
     void Compiler::addModuleBloat(JesusASM::tree::ModuleNode* module) {

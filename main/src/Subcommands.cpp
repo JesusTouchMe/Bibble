@@ -120,17 +120,16 @@ namespace commands {
     }
 
     static void Compile(Bibble::Compiler& compiler, const fs::path& srcDir, const fs::path& input, const fs::path& output) {
-        if (fs::is_regular_file(input) && input.extension() == ".bibble") {
+        if (input.extension() == ".bibble") {
             if (fs::exists(output)) {
-                auto inputTime = fs::last_write_time(input);
+                auto inputTime = fs::last_write_time(srcDir / input);
                 auto outputTime = fs::last_write_time(output);
 
                 //if (inputTime <= outputTime) return; // already compiled. skipping
             }
 
-            std::string moduleName = fs::relative(input, srcDir).string();
-            std::replace(moduleName.begin(), moduleName.end(), '\\', '.');
-            std::replace(moduleName.begin(), moduleName.end(), '/', '.');
+            std::string moduleName = input.string();
+            std::replace(moduleName.begin(), moduleName.end(), '\\', '/');
 
             moduleName = moduleName.substr(0, moduleName.find_last_of('.' ));
 
