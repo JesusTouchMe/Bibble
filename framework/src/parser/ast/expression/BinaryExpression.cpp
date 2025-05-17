@@ -66,11 +66,13 @@ namespace parser {
             , mOperator(op)
             , mRight(std::move(right)) {}
 
-    void BinaryExpression::codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag) {
+    void BinaryExpression::codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag, bool statement) {
         if (mOperator != Operator::Assign) {
-            mLeft->codegen(builder, ctx, diag);
-            mRight->codegen(builder, ctx, diag);
+            mLeft->codegen(builder, ctx, diag, statement);
+            mRight->codegen(builder, ctx, diag, statement);
         }
+
+        if (statement && mOperator != Operator::Assign) return;
 
         switch (mOperator) {
             case Operator::Add:
@@ -146,11 +148,14 @@ namespace parser {
                         }
 
                         builder.createLoad(local->type, local->index);
+                        if (!statement) builder.createDup(local->type);
 
-                        mRight->codegen(builder, ctx, diag);
+                        mRight->codegen(builder, ctx, diag, false);
 
                         auto field = scopeOwner->getField(variableExpression->getName());
                         builder.createSetField(scopeOwner->getType(), field->type, field->name);
+
+                        if (!statement) builder.createGetField(scopeOwner->getType(), field->type, field->name);
                     } else {
                         symbol::LocalSymbol* local = mScope->findLocal(variableExpression->getName());
                         if (local == nullptr) {
@@ -161,17 +166,21 @@ namespace parser {
                             std::exit(1);
                         }
 
-                        mRight->codegen(builder, ctx, diag);
+                        mRight->codegen(builder, ctx, diag, false);
+                        if (!statement) builder.createDup(mRight->getType());
 
                         builder.createStore(local->type, local->index);
                     }
                 } else if (auto memberAccess = dynamic_cast<MemberAccess*>(mLeft.get())) {
-                    memberAccess->getClass()->codegen(builder, ctx, diag);
+                    memberAccess->getClass()->codegen(builder, ctx, diag, false);
+                    if (!statement) builder.createDup(memberAccess->getClass()->getType());
 
-                    mRight->codegen(builder, ctx, diag);
+                    mRight->codegen(builder, ctx, diag, false);
 
                     auto field = memberAccess->getClassSymbol()->getField(memberAccess->getId());
                     builder.createSetField(memberAccess->getClassType(), field->type, field->name);
+
+                    if (!statement) builder.createGetField(memberAccess->getClassType(), field->type, field->name);
                 } else {
                     diag.fatalError("TODO: error message");
                 }

@@ -9,17 +9,17 @@ namespace parser {
     NewExpression::NewExpression(symbol::Scope* scope, Type* type, std::vector<ASTNodePtr> parameters, lexer::Token token)
         : ASTNode(scope, type, std::move(token))
         , mParameters(std::move(parameters))
-        , mBestViableConstructor(nullptr)
-        , mIsStatement(false) {}
+        , mBestViableConstructor(nullptr) {}
 
-    void NewExpression::codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag) {
+    void NewExpression::codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag,
+                                bool statement) {
         builder.createNew(mType);
-        if (!mIsStatement) {
+        if (!statement) {
             builder.createDup(mType); // we're gonna only dup it if we plan on keeping the reference otherwise we might as well let it die after the constructor call
         }
 
         for (auto& parameter : mParameters) {
-            parameter->codegen(builder,ctx, diag);
+            parameter->codegen(builder, ctx, diag, false);
         }
 
         builder.createCall(mBestViableConstructor->moduleName, mBestViableConstructor->name, mBestViableConstructor->type);
@@ -29,8 +29,6 @@ namespace parser {
         for (auto& parameter : mParameters) {
             parameter->semanticCheck(diag, exit, statement);
         }
-
-        mIsStatement = statement;
     }
 
     void NewExpression::typeCheck(diagnostic::Diagnostics& diag, bool& exit) {

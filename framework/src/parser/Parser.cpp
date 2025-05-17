@@ -297,6 +297,9 @@ namespace parser {
             case lexer::TokenType::IfKeyword:
                 return parseIfStatement();
 
+            case lexer::TokenType::ReturnKeyword:
+                return parseReturnStatement();
+
             default:
                 mDiag.compilerError(current().getStartLocation(),
                                     current().getEndLocation(),
@@ -822,6 +825,16 @@ namespace parser {
         mScope = scope->parent;
 
         return std::make_unique<IfStatement>(std::move(scope) ,std::move(condition), std::move(body), std::move(elseBody), std::move(token));
+    }
+
+    ReturnStatementPtr Parser::parseReturnStatement() {
+        auto token = consume();
+
+        if (current().getTokenType() == lexer::TokenType::Semicolon) {
+            return std::make_unique<ReturnStatement>(mScope, nullptr, std::move(token));
+        }
+
+        return std::make_unique<ReturnStatement>(mScope, parseExpression(), std::move(token));
     }
 
     VariableDeclarationPtr Parser::parseVariableDeclaration(Type* type) {

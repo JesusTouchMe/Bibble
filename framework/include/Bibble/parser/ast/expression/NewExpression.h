@@ -10,7 +10,7 @@ namespace parser {
     public:
         NewExpression(symbol::Scope* scope, Type* type, std::vector<ASTNodePtr> parameters, lexer::Token token);
 
-        void codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag) override;
+        void codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag, bool statement) override;
 
         void semanticCheck(diagnostic::Diagnostics& diag, bool& exit, bool statement) override;
 
@@ -20,8 +20,6 @@ namespace parser {
     private:
         std::vector<ASTNodePtr> mParameters;
         symbol::FunctionSymbol* mBestViableConstructor;
-
-        bool mIsStatement;
 
         symbol::FunctionSymbol* getBestViableConstructor(diagnostic::Diagnostics& diag, bool& exit);
     };

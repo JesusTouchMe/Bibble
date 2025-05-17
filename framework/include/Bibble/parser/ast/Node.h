@@ -29,7 +29,7 @@ namespace parser {
         Type* getType() const { return mType; }
         const lexer::Token& getErrorToken() const { return mErrorToken; }
 
-        virtual void codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag) = 0;
+        virtual void codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag, bool statement) = 0;
 
         virtual void semanticCheck(diagnostic::Diagnostics& diag, bool& exit, bool statement) = 0;
 

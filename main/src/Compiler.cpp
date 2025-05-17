@@ -84,7 +84,7 @@ namespace Bibble {
         codegen::Builder builder(ctx);
 
         for (auto& node : existing->ast) {
-            node->codegen(builder, ctx, existing->diag);
+            node->codegen(builder, ctx, existing->diag, true);
         }
 
         if (Log::verbose) ctx.getModule()->print(std::cout);

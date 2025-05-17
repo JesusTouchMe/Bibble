@@ -116,7 +116,7 @@ namespace parser {
         mOwnScope->owner = mScope->findClass(mName);
     }
 
-    void ClassDeclaration::codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag) {
+    void ClassDeclaration::codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag, bool statement) {
         u16 modifiers = 0;
         for (auto modifier : mModifiers) {
             modifiers |= static_cast<u16>(modifier);
@@ -149,7 +149,7 @@ namespace parser {
             builder.setInsertPoint(&function->instructions);
 
             for (auto& value : method.body) {
-                value->codegen(builder, ctx, diag);
+                value->codegen(builder, ctx, diag, true);
             }
 
             if (auto type = static_cast<FunctionType*>(method.type); type->getReturnType()->isVoidType()) {
@@ -173,7 +173,7 @@ namespace parser {
             builder.setInsertPoint(&function->instructions);
 
             for (auto& value : method.body) {
-                value->codegen(builder, ctx, diag);
+                value->codegen(builder, ctx, diag, false);
             }
 
             if (auto type = static_cast<FunctionType*>(method.type); type->getReturnType()->isVoidType()) {

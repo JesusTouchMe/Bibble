@@ -7,8 +7,9 @@ namespace parser {
         : ASTNode(scope, Type::Get("string"), std::move(token))
         , mValue(std::move(value)) {}
 
-    void StringLiteral::codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag) {
-        builder.createLdc(mValue);
+    void StringLiteral::codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag, bool statement) {
+        if (!statement) // Maybe we want some side effect of constructing a String?
+            builder.createLdc(mValue);
     }
 
     void StringLiteral::semanticCheck(diagnostic::Diagnostics& diag, bool& exit, bool statement) {

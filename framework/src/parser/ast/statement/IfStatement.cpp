@@ -13,8 +13,10 @@ namespace parser {
         , mElseBody(std::move(elseBody))
         , mOwnScope(std::move(scope)) {}
 
-    void IfStatement::codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag) {
-        mCondition->codegen(builder, ctx, diag);
+    void IfStatement::codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag, bool statement) {
+        // TODO: if expressions `var a = if (hello == "world") "yep" else "nop";`
+
+        mCondition->codegen(builder, ctx, diag, false);
 
         codegen::LabelPtr trueLabel = builder.createLabel("");
         codegen::LabelPtr falseLabel;
@@ -29,12 +31,12 @@ namespace parser {
         }
 
         builder.insertLabel(std::move(trueLabel));
-        mBody->codegen(builder, ctx, diag);
+        mBody->codegen(builder, ctx, diag, true);
         builder.createJump(mergeLabel.get());
 
         if (mElseBody) {
             builder.insertLabel(std::move(falseLabel));
-            mElseBody->codegen(builder, ctx, diag);
+            mElseBody->codegen(builder, ctx, diag, true);
             builder.createJump(mergeLabel.get());
         }
 

@@ -31,7 +31,7 @@ namespace parser {
         BinaryExpression(symbol::Scope* scope, ASTNodePtr left, lexer::TokenType operatorToken, ASTNodePtr right, lexer::Token token);
         BinaryExpression(symbol::Scope* scope, ASTNodePtr left, Operator op, ASTNodePtr right, lexer::Token token);
 
-        void codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag) override;
+        void codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag, bool statement) override;
 
         void semanticCheck(diagnostic::Diagnostics& diag, bool& exit, bool statement) override;
 

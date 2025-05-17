@@ -15,11 +15,11 @@ namespace parser {
         *index += type->getStackSlots();
     }
 
-    void VariableDeclaration::codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag) {
+    void VariableDeclaration::codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag, bool statement) {
         if (mInitialValue) {
             auto* local = mScope->findLocal(mName);
 
-            mInitialValue->codegen(builder, ctx, diag);
+            mInitialValue->codegen(builder, ctx, diag, false);
             builder.createStore(local->type, local->index);
         }
     }

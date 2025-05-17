@@ -40,7 +40,7 @@ class LinkedList {
     }
 }
 
-void test() {
+int test() {
     LinkedList list = new LinkedList();
 
     list.add(1);
@@ -48,6 +48,8 @@ void test() {
     list.add(3);
 
     list = null;
+
+    return 0;
 }
 
 void main() {

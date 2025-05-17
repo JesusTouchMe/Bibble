@@ -51,7 +51,8 @@ set(SOURCES
     src/parser/ast/expression/MemberAccess.cpp
     src/parser/ast/expression/NewExpression.cpp
     src/diagnostic/Assert.cpp
-    src/parser/ast/expression/NullLiteral.cpp)
+    src/parser/ast/expression/NullLiteral.cpp
+    src/parser/ast/statement/ReturnStatement.cpp)
 set(HEADERS
     include/Bibble/diagnostic/Diagnostic.h
     include/Bibble/type/Type.h
@@ -87,7 +88,8 @@ set(HEADERS
     include/Bibble/parser/ast/expression/MemberAccess.h
     include/Bibble/parser/ast/expression/NewExpression.h
     include/Bibble/diagnostic/Assert.h
-    include/Bibble/parser/ast/expression/NullLiteral.h)
+    include/Bibble/parser/ast/expression/NullLiteral.h
+    include/Bibble/parser/ast/statement/ReturnStatement.h)
 
 source_group(TREE ${PROJECT_SOURCE_DIR} FILES ${SOURCES} ${HEADERS})
 

@@ -10,9 +10,9 @@ namespace parser {
         , mBody(std::move(body))
         , mOwnScope(std::move(scope)) {}
 
-    void CompoundStatement::codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag) {
+    void CompoundStatement::codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag, bool statement) {
         for (auto& node : mBody) {
-            node->codegen(builder, ctx, diag);
+            node->codegen(builder, ctx, diag, true); //TODO: compound as expression emits its last value to the stack
         }
     }
 

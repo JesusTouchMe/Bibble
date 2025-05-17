@@ -25,8 +25,10 @@ namespace parser {
         , mOperator(op)
         , mPostfix(postfix) {}
 
-    void UnaryExpression::codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag) {
-        mOperand->codegen(builder, ctx, diag);
+    void UnaryExpression::codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag, bool statement) {
+        mOperand->codegen(builder, ctx, diag, statement);
+
+        if (statement) return;
 
         switch (mOperator) {
             case Operator::Negate:

@@ -27,8 +27,10 @@ namespace parser {
         return mClassType;
     }
 
-    void MemberAccess::codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag) {
-        mClass->codegen(builder, ctx, diag);
+    void MemberAccess::codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag, bool statement) {
+        if (statement) return;
+
+        mClass->codegen(builder, ctx, diag, false);
 
         auto field = mClassSymbol->getField(mId);
 

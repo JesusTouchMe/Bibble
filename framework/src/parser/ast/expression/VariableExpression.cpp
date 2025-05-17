@@ -15,7 +15,9 @@ namespace parser {
         , mNames(std::move(names))
         , mIsImplicitThis(false) {}
 
-    void VariableExpression::codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag) {
+    void VariableExpression::codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag, bool statement) {
+        if (statement) return;
+
         if (mIsImplicitThis) {
             auto scopeOwner = mScope->findOwner();
 

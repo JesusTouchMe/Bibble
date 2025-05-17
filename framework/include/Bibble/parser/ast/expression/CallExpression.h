@@ -10,7 +10,7 @@ namespace parser {
     public:
         CallExpression(symbol::Scope* scope, ASTNodePtr callee, std::vector<ASTNodePtr> parameters);
 
-        void codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag) override;
+        void codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag, bool statement) override;
 
         void semanticCheck(diagnostic::Diagnostics& diag, bool& exit, bool statement) override;
 
@@ -23,7 +23,6 @@ namespace parser {
         symbol::FunctionSymbol* mBestViableFunction;
 
         bool mIsMemberFunction;
-        bool mIsStatement;
 
         symbol::FunctionSymbol* getBestViableFunction(diagnostic::Diagnostics& diag, bool& exit);
     };

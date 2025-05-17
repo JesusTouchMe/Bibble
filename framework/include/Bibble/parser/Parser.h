@@ -14,6 +14,7 @@
 
 #include "Bibble/parser/ast/statement/CompoundStatement.h"
 #include "Bibble/parser/ast/statement/IfStatement.h"
+#include "Bibble/parser/ast/statement/ReturnStatement.h"
 #include "Bibble/parser/ast/statement/VariableDeclaration.h"
 
 #include "Bibble/parser/ast/global/ClassDeclaration.h"
@@ -76,6 +77,7 @@ namespace parser {
 
         CompoundStatementPtr parseCompoundStatement();
         IfStatementPtr parseIfStatement();
+        ReturnStatementPtr parseReturnStatement();
         VariableDeclarationPtr parseVariableDeclaration(Type* type); // type is parsed to see if it's a variable lmao
     };
 

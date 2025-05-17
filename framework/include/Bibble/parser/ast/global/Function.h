@@ -25,7 +25,7 @@ namespace parser {
     public:
         Function(std::vector<FunctionModifier> modifiers, std::string name, FunctionType* type, std::vector<FunctionArgument> arguments, std::vector<ASTNodePtr> body, symbol::ScopePtr scope, lexer::Token token);
 
-        void codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag) override;
+        void codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag, bool statement) override;
 
         void semanticCheck(diagnostic::Diagnostics& diag, bool& exit, bool statement) override;
 

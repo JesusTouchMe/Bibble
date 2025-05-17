@@ -74,6 +74,14 @@ namespace symbol {
         return names;
     }
 
+    Type* Scope::getCurrentReturnType() {
+        Scope* scope = this;
+        while (scope != nullptr) {
+            if (scope->currentReturnType != nullptr) return scope->currentReturnType;
+            scope = scope->parent;
+        }
+    }
+
     std::vector<FunctionSymbol*> Scope::getCandidateFunctions(std::vector<std::string> names) {
         std::vector<std::string> activeNames = getNames();
         std::vector<FunctionSymbol*> candidateFunctions;

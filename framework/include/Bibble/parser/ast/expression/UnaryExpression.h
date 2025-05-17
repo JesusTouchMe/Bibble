@@ -15,7 +15,7 @@ namespace parser {
         UnaryExpression(symbol::Scope* scope, ASTNodePtr operand, lexer::TokenType operatorToken, bool postfix, lexer::Token token);
         UnaryExpression(symbol::Scope* scope, ASTNodePtr operand, Operator op, bool postfix, lexer::Token token);
 
-        void codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag) override;
+        void codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag, bool statement) override;
 
         void semanticCheck(diagnostic::Diagnostics& diag, bool& exit, bool statement) override;
 

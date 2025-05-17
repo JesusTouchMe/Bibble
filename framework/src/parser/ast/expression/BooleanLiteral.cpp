@@ -7,8 +7,9 @@ namespace parser {
         : ASTNode(scope, Type::Get("bool"), std::move(token))
         , mValue(value) {}
 
-    void BooleanLiteral::codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag) {
-        builder.createLdc(mType, mValue);
+    void BooleanLiteral::codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag, bool statement) {
+        if (!statement)
+            builder.createLdc(mType, mValue);
     }
 
     void BooleanLiteral::semanticCheck(diagnostic::Diagnostics& diag, bool& exit, bool statement) {

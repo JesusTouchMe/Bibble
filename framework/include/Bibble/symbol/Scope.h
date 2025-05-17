@@ -77,6 +77,8 @@ namespace symbol {
 
         std::vector<std::string> getNames();
 
+        Type* getCurrentReturnType();
+
         std::vector<FunctionSymbol*> getCandidateFunctions(std::vector<std::string> names);
         std::vector<FunctionSymbol*> getCandidateFunctionsDown(std::string name);
         std::vector<FunctionSymbol*> getCandidateFunctionsDown(std::vector<std::string> names);

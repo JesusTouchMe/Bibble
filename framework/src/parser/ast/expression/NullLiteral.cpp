@@ -6,8 +6,9 @@ namespace parser {
     NullLiteral::NullLiteral(symbol::Scope* scope, lexer::Token token)
             : ASTNode(scope, Type::Get("handle"), std::move(token)) {}
 
-    void NullLiteral::codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag) {
-        builder.createLdc(mType, nullptr);
+    void NullLiteral::codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag, bool statement) {
+        if (!statement)
+            builder.createLdc(mType, nullptr);
     }
 
     void NullLiteral::semanticCheck(diagnostic::Diagnostics& diag, bool& exit, bool statement) {

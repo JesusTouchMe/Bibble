@@ -11,7 +11,7 @@ namespace parser {
         VariableExpression(symbol::Scope* scope, std::string name, lexer::Token token);
         VariableExpression(symbol::Scope* scope, std::vector<std::string> names, lexer::Token token);
 
-        void codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag) override;
+        void codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag, bool statement) override;
 
         void semanticCheck(diagnostic::Diagnostics& diag, bool& exit, bool statement) override;
 

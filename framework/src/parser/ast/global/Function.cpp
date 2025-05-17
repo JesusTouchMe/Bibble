@@ -27,7 +27,7 @@ namespace parser {
         }
     }
 
-    void Function::codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag) {
+    void Function::codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag, bool statement) {
         u16 modifiers = 0;
         for (auto modifier : mModifiers) {
             modifiers |= static_cast<u16>(modifier);
@@ -40,12 +40,12 @@ namespace parser {
             return;
         }
 
-        function->attributes.push_back(std::make_unique<JesusASM::Attribute<bool>>("CompilerOptimized", true));
+        function->attributes.push_back(std::make_unique<JesusASM::Attribute<bool>>("CompilerOptimized", false));
 
         builder.setInsertPoint(&function->instructions);
 
         for (auto& value : mBody) {
-            value->codegen(builder, ctx, diag);
+            value->codegen(builder, ctx, diag, true);
         }
 
         if (auto type = static_cast<FunctionType*>(mType); type->getReturnType()->isVoidType()) {

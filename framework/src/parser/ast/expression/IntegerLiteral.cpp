@@ -12,8 +12,9 @@ namespace parser {
         : ASTNode(scope, Type::Get("int"), std::move(token))
         , mValue(value) {}
 
-    void IntegerLiteral::codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag) {
-        builder.createLdc(mType, mValue);
+    void IntegerLiteral::codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag, bool statement) {
+        if (!statement)
+            builder.createLdc(mType, mValue);
     }
 
     void IntegerLiteral::semanticCheck(diagnostic::Diagnostics& diag, bool& exit, bool statement) {

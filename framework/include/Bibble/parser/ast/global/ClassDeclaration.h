@@ -49,7 +49,7 @@ namespace parser {
     public:
         ClassDeclaration(std::vector<ClassModifier> modifiers, std::string name, std::vector<ClassField> fields, std::vector<ClassMethod> constructors, std::vector<ClassMethod> methods, symbol::ScopePtr scope, lexer::Token token);
 
-        void codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag) override;
+        void codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag, bool statement) override;
 
         void semanticCheck(diagnostic::Diagnostics& diag, bool& exit, bool statement) override;
 

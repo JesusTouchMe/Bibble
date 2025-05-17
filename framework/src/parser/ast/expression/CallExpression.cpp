@@ -13,10 +13,9 @@ namespace parser {
         , mCallee(std::move(callee))
         , mParameters(std::move(parameters))
         , mBestViableFunction(nullptr)
-        , mIsMemberFunction(false)
-        , mIsStatement(false) {}
+        , mIsMemberFunction(false) {}
 
-    void CallExpression::codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag) {
+    void CallExpression::codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag, bool statement) {
         if (mBestViableFunction == nullptr) {
             diag.compilerError(mErrorToken.getStartLocation(),
                                mErrorToken.getEndLocation(),
@@ -30,17 +29,17 @@ namespace parser {
                 builder.createLoad(self->type, self->index);
             } else {
                 auto member = static_cast<MemberAccess*>(mCallee.get());
-                member->mClass->codegen(builder, ctx, diag);
+                member->mClass->codegen(builder, ctx, diag, false);
             }
         }
 
         for (auto& parameter : mParameters) {
-            parameter->codegen(builder,ctx, diag);
+            parameter->codegen(builder, ctx, diag, false);
         }
 
         builder.createCall(mBestViableFunction->moduleName, mBestViableFunction->name, mBestViableFunction->type);
 
-        if (mIsStatement && !mType->isVoidType()) {
+        if (statement && !mType->isVoidType()) {
             builder.createPop(mType);
         }
     }
@@ -50,8 +49,6 @@ namespace parser {
         for (auto& parameter : mParameters) {
             parameter->semanticCheck(diag, exit, false);
         }
-
-        mIsStatement = statement;
 
         if (statement && (mBestViableFunction->modifiers & MODULEWEB_FUNCTION_MODIFIER_PURE)) {
             mType = Type::Get("void");
