@@ -29,7 +29,10 @@ namespace parser {
                                        , mConstructors(std::move(constructors))
                                        , mMethods(std::move(methods))
                                        , mOwnScope(std::move(scope)) {
-        mType = ClassType::Create(mOwnScope->findModuleScope()->name, mName);
+        ClassType* classType;
+        mType = classType = ClassType::Find(mOwnScope->findModuleScope()->name, mName);
+
+        classType = classType->getBaseType();
 
         std::vector<symbol::ClassSymbol::Field> fieldSymbols;
         std::vector<symbol::ClassSymbol::Method> constructorSymbols;
@@ -63,7 +66,7 @@ namespace parser {
             method.type = FunctionType::Create(method.type->getReturnType(), std::move(argumentTypes));
 
             auto methodScope = method.scope->parent;
-            methodScope->createFunction(method.name, method.type, methodModifiers);
+            symbol::FunctionSymbol* functionSymbol = methodScope->createFunction(mName + "::" + method.name, method.type, methodModifiers);
 
             method.arguments.insert(method.arguments.begin(), FunctionArgument(mType, "this"));
 
@@ -74,7 +77,7 @@ namespace parser {
                 *index += argument.type->getStackSlots();
             }
 
-            constructorSymbols.push_back({ methodModifiers, method.name, method.type });
+            constructorSymbols.push_back({ methodModifiers, method.name, mName + "::" + method.name, method.type, functionSymbol });
         }
 
         for (auto& method : mMethods) {
@@ -88,7 +91,7 @@ namespace parser {
             method.type = FunctionType::Create(method.type->getReturnType(), std::move(argumentTypes));
 
             auto methodScope = method.scope->parent;
-            methodScope->createFunction(method.name, method.type, methodModifiers);
+            symbol::FunctionSymbol* functionSymbol = methodScope->createFunction(mName + "::" + method.name, method.type, methodModifiers);
 
             method.arguments.insert(method.arguments.begin(), FunctionArgument(mType, "this"));
 
@@ -99,7 +102,7 @@ namespace parser {
                 *index += argument.type->getStackSlots();
             }
 
-            methodSymbols.push_back({ methodModifiers, method.name, method.type });
+            methodSymbols.push_back({ methodModifiers, method.name, mName + "::" + method.name, method.type, functionSymbol });
         }
 
         bool isPublic = false;
@@ -112,7 +115,14 @@ namespace parser {
             }
         }
 
-        mScope->createClass(mName, std::move(fieldSymbols), std::move(constructorSymbols), std::move(methodSymbols), isPublic);
+        symbol::ClassSymbol* baseClass = classType == nullptr ? nullptr : mScope->findClass({ std::string(classType->getModuleName()), std::string(classType->getName()) });
+
+        if (baseClass == nullptr && classType != nullptr) {
+            //TODO: error
+            int a = 5;
+        }
+
+        mScope->createClass(mName, baseClass, std::move(fieldSymbols), std::move(constructorSymbols), std::move(methodSymbols), isPublic);
         mOwnScope->owner = mScope->findClass(mName);
     }
 
@@ -122,7 +132,13 @@ namespace parser {
             modifiers |= static_cast<u16>(modifier);
         }
 
-        auto classNode = builder.addClass(modifiers, mName);
+        auto classType = static_cast<ClassType*>(mType);
+
+        JesusASM::tree::ClassNode* classNode;
+        if (classType->getBaseType() != nullptr)
+            classNode = builder.addClass(modifiers, mName, classType->getBaseType()->getModuleName(), classType->getBaseType()->getName());
+        else
+            classNode = builder.addClass(modifiers, mName);
 
         for (auto& field : mFields) {
             u16 fieldModifiers = 0;
@@ -140,7 +156,7 @@ namespace parser {
             }
 
             auto functionType = method.type->getJesusASMType();
-            auto function = builder.addFunction(methodModifiers, method.name, functionType);
+            auto function = builder.addFunction(methodModifiers, mName + "::" + method.name, functionType);
 
             if (methodModifiers & MODULEWEB_FUNCTION_MODIFIER_NATIVE) {
                 continue;
@@ -164,7 +180,7 @@ namespace parser {
             }
 
             auto functionType = method.type->getJesusASMType();
-            auto function = builder.addFunction(methodModifiers, method.name, functionType);
+            auto function = builder.addFunction(methodModifiers, mName + "::" + method.name, functionType);
 
             if (methodModifiers & MODULEWEB_FUNCTION_MODIFIER_NATIVE) {
                 continue;

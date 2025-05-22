@@ -5,6 +5,7 @@
 
 #include "Bibble/lexer/Token.h"
 
+#include "Bibble/parser/ast/expression/BinaryExpression.h"
 #include "Bibble/parser/ast/expression/CallExpression.h"
 #include "Bibble/parser/ast/expression/Integerliteral.h"
 #include "Bibble/parser/ast/expression/MemberAccess.h"
@@ -53,7 +54,7 @@ namespace parser {
         int getPrefixUnaryOperatorPrecedence(lexer::TokenType tokenType);
         int getPostfixUnaryOperatorPrecedence(lexer::TokenType tokenType);
 
-        Type* parseType(bool failable = false);
+        Type* parseType(bool failable = false, bool failableArray = false);
 
         ASTNodePtr parseGlobal();
         ASTNodePtr parseExpression(int precedence = 1);
@@ -73,7 +74,7 @@ namespace parser {
         MemberAccessPtr parseMemberAccess(ASTNodePtr classNode);
         VariableExpressionPtr parseVariableExpression();
         CallExpressionPtr parseCallExpression(ASTNodePtr callee);
-        NewExpressionPtr parseNewExpression();
+        ASTNodePtr parseNewExpression();
 
         CompoundStatementPtr parseCompoundStatement();
         IfStatementPtr parseIfStatement();

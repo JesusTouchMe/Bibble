@@ -71,11 +71,8 @@ namespace parser {
             }
         }
 
-        // if (isQualified()) globalScope stuff
-
-        symbol::LocalSymbol* local = mScope->findLocal(mNames.back());
-        if (local == nullptr) {
-            symbol::FunctionSymbol* func = mScope->findFunction(mNames.back(), nullptr);
+        if (isQualified()) {
+            symbol::FunctionSymbol* func = mScope->findFunction(mNames, nullptr);
             if (func == nullptr) {
                 diag.compilerError(mErrorToken.getStartLocation(),
                                    mErrorToken.getEndLocation(),
@@ -86,7 +83,21 @@ namespace parser {
                 mType = func->type;
             }
         } else {
-            mType = local->type;
+            symbol::LocalSymbol* local = mScope->findLocal(mNames.back());
+            if (local == nullptr) {
+                symbol::FunctionSymbol* func = mScope->findFunction(mNames.back(), nullptr);
+                if (func == nullptr) {
+                    diag.compilerError(mErrorToken.getStartLocation(),
+                                       mErrorToken.getEndLocation(),
+                                       std::format("undeclared identifier '{}{}{}'",
+                                                   fmt::bold, reconstructNames(), fmt::defaults));
+                    exit = true;
+                } else {
+                    mType = func->type;
+                }
+            } else {
+                mType = local->type;
+            }
         }
     }
 

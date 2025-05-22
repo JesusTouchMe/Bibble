@@ -11,10 +11,11 @@
 
 class ClassType : public Type {
 public:
-    ClassType(std::string_view moduleName, std::string_view name);
+    ClassType(std::string_view moduleName, std::string_view name, ClassType* baseType);
 
     std::string_view getModuleName() const;
     std::string_view getName() const;
+    ClassType* getBaseType() const;
 
     int getStackSlots() const override;
     JesusASM::Type* getJesusASMType() const override;
@@ -26,11 +27,13 @@ public:
 
     bool isClassType() const override;
 
-    static ClassType* Create(std::string_view moduleName, std::string_view name);
+    static ClassType* Find(std::string_view moduleName, std::string_view name);
+    static ClassType* Create(std::string_view moduleName, std::string_view name, ClassType* baseType);
 
 private:
     std::string mModuleName;
     std::string mName;
+    ClassType* mBaseType;
 };
 
 #endif //BIBBLE_FRAMEWORK_INCLUDE_BIBBLE_TYPE_CLASSTYPE_H

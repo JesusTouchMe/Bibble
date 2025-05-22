@@ -71,12 +71,12 @@ namespace codegen {
         void createLoad(::Type* type, u16 index);
         void createStore(::Type* type, u16 index);
 
-        void createArrayLoad(::Type* type);
-        void createArrayStore(::Type* type);
-        void createArrayLength(::Type* type);
+        void createArrayLoad(::Type* arrayType);
+        void createArrayStore(::Type* arrayType);
+        void createArrayLength(::Type* arrayType);
 
         void createNew(::Type* type);
-        void createNewArray(::Type* type);
+        void createNewArray(::Type* arrayType);
 
         void createIsInstance(::Type* checkedType);
 

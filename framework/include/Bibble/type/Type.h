@@ -9,6 +9,8 @@
 
 #include <JesusASM/type/Type.h>
 
+#include <moduleweb/types.h>
+
 #include <memory>
 #include <utility>
 
@@ -18,6 +20,18 @@ namespace symbol {
 
 class Type {
 public:
+    enum CodeType : u8 { // these are the type IDs used in bytecode for newarray (and maybe more) instructions
+        T_BYTE,
+        T_SHORT,
+        T_INT,
+        T_LONG,
+        T_CHAR,
+        T_FLOAT,
+        T_DOUBLE,
+        T_BOOL,
+        T_HANDLE,
+    };
+
     enum class CastLevel {
         Implicit,
         ImplicitWarning,
@@ -43,6 +57,7 @@ public:
     virtual bool isCharType()       const { return false; }
     virtual bool isHandleType()     const { return false; }
     virtual bool isClassType()      const { return false; }
+    virtual bool isArrayType()      const { return false; }
     virtual bool isVoidType()       const { return false; }
     virtual bool isFunctionType()   const { return false; }
 

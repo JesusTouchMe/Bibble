@@ -21,12 +21,15 @@ tokens {
     )
     {
     _right_brace
+    [
+    ]
 
     _integer_literal
     _string_literal
     _identifier
 
     class
+    extends
     import
 
     new

@@ -10,18 +10,19 @@ namespace symbol {
         : index(index)
         , type(type) {}
 
-    ClassSymbol::ClassSymbol(std::string moduleName, std::string name, std::vector<Field> fields, std::vector<Method> constructors, std::vector<Method> methods, bool isPublic)
+    ClassSymbol::ClassSymbol(std::string moduleName, std::string name, ClassSymbol* baseClass, std::vector<Field> fields, std::vector<Method> constructors, std::vector<Method> methods, bool isPublic)
         : isPublic(isPublic)
         , moduleName(std::move(moduleName))
         , name(std::move(name))
+        , baseClass(baseClass)
         , fields(std::move(fields))
         , constructors(std::move(constructors))
         , methods(std::move(methods)) {
-        std::replace(moduleName.begin(), moduleName.end(), '.', '/');
+        std::replace(this->moduleName.begin(), this->moduleName.end(), '.', '/');
     }
 
     ClassType* ClassSymbol::getType() const {
-        return ClassType::Create(moduleName, name);
+        return ClassType::Find(moduleName, name);
     }
 
     ClassSymbol::Field* ClassSymbol::getField(std::string_view name) {
@@ -30,7 +31,8 @@ namespace symbol {
         });
 
         if (it != fields.end()) return &*it;
-        return nullptr;
+        else if (baseClass != nullptr) return baseClass->getField(name);
+        else return nullptr;
     }
 
     ClassSymbol::Method* ClassSymbol::getMethod(std::string_view name) {
@@ -39,15 +41,47 @@ namespace symbol {
         });
 
         if (it != methods.end()) return &*it;
-        return nullptr;
+        else if (baseClass != nullptr) return baseClass->getMethod(name);
+        else return nullptr;
     }
+
+    std::vector<FunctionSymbol*> ClassSymbol::getCandidateMethods(std::string_view name) {
+        std::vector<FunctionSymbol*> candidates;
+        std::unordered_set<Signature> seen;
+        getCandidateMethods(candidates, seen, name);
+        return candidates;
+    }
+
+    bool ClassSymbol::getCandidateMethods(std::vector<FunctionSymbol*>& candidates, std::unordered_set<Signature>& seen, std::string_view name) {
+        bool found = false;
+
+        auto GetSignature = [](const Method& method) -> Signature {
+            return Signature(method.name, method.type);
+        };
+
+        for (const auto& method : methods) {
+            if (method.name == name) {
+                Signature signature = GetSignature(method);
+                if (!seen.contains(signature)) {
+                    seen.insert(signature);
+                    candidates.push_back(method.function);
+                    found = true;
+                }
+            }
+        }
+
+        if (baseClass != nullptr) baseClass->getCandidateMethods(candidates, seen, name);
+
+        return found;
+    }
+
 
     FunctionSymbol::FunctionSymbol(std::string moduleName, std::string name, FunctionType* type, u16 modifiers)
         : moduleName(std::move(moduleName))
         , name(std::move(name))
         , type(type)
         , modifiers(modifiers) {
-        std::replace(moduleName.begin(), moduleName.end(), '.', '/');
+        std::replace(this->moduleName.begin(), this->moduleName.end(), '.', '/');
     }
 
     Scope::Scope(Scope* parent, std::string name, bool isGlobalScope, Type* currentReturnType)
@@ -80,6 +114,8 @@ namespace symbol {
             if (scope->currentReturnType != nullptr) return scope->currentReturnType;
             scope = scope->parent;
         }
+
+        return nullptr;
     }
 
     std::vector<FunctionSymbol*> Scope::getCandidateFunctions(std::vector<std::string> names) {
@@ -108,14 +144,14 @@ namespace symbol {
             if (!n.empty()) return {};
         }
 
-        auto it = std::find_if(functions.begin(), functions.end(), [&name](const FunctionSymbol& function) {
-            return function.name == name;
+        auto it = std::find_if(functions.begin(), functions.end(), [&name](const auto& function) {
+            return function->name == name;
         });
 
         while (it != functions.end()) {
-            candidateFunctions.push_back(&*it);
-            it = std::find_if(it + 1, functions.end(), [&name](const FunctionSymbol& function) {
-                return function.name == name;
+            candidateFunctions.push_back(it->get());
+            it = std::find_if(it + 1, functions.end(), [&name](const auto& function) {
+                return function->name == name;
             });
         }
 
@@ -133,14 +169,14 @@ namespace symbol {
         std::erase(activeNames, "");
 
         if (std::equal(activeNames.begin(), activeNames.end(), names.begin(), names.end() - 1)) {
-            auto it = std::find_if(functions.begin(), functions.end(), [&names](const FunctionSymbol& function) {
-                return function.name == names.back();
+            auto it = std::find_if(functions.begin(), functions.end(), [&names](const auto& function) {
+                return function->name == names.back();
             });
 
             while (it != functions.end()) {
-                candidateFunctions.push_back(&*it);
-                it = std::find_if(it + 1, functions.end(), [&names](const FunctionSymbol& function) {
-                    return function.name == names.back();
+                candidateFunctions.push_back(it->get());
+                it = std::find_if(it + 1, functions.end(), [&names](const auto& function) {
+                    return function->name == names.back();
                 });
             }
         }
@@ -229,11 +265,11 @@ namespace symbol {
         Scope* scope = this;
         while (scope != nullptr) {
             auto it = std::find_if(scope->functions.begin(), scope->functions.end(), [&name, type](const auto& symbol) {
-                return symbol.name == name && (type == nullptr || symbol.type == type);
+                return symbol->name == name && (type == nullptr || symbol->type == type);
             });
 
-            if (it != functions.end()) {
-                return &*it;
+            if (it != scope->functions.end()) {
+                return it->get();
             }
 
             scope = scope->parent;
@@ -324,9 +360,9 @@ namespace symbol {
         }
 
         auto it = std::find_if(functions.begin(), functions.end(), [name, type](const auto& symbol) {
-            return symbol.name == name && (type == nullptr || symbol.type == type);
+            return symbol->name == name && (type == nullptr || symbol->type == type);
         });
-        if (it != functions.end()) return &*it;
+        if (it != functions.end()) return it->get();
 
         for (auto child : children) {
             if (auto sym = child->resolveFunctionSymbolDown(name, type)) return sym;
@@ -340,10 +376,10 @@ namespace symbol {
 
         if (std::equal(activeNames.begin(), activeNames.end(), names.begin(), names.end() - 1)) {
             auto it = std::find_if(functions.begin(), functions.end(), [&names, type](const auto& symbol) {
-               return symbol.name == names.back() && (type == nullptr || symbol.type == type);
+               return symbol->name == names.back() && (type == nullptr || symbol->type == type);
             });
 
-            if (it != functions.end()) return &*it;
+            if (it != functions.end()) return it->get();
         }
 
         for (auto child : children) {
@@ -355,11 +391,12 @@ namespace symbol {
         return nullptr;
     }
 
-    void Scope::createClass(std::string className, std::vector<ClassSymbol::Field> fields, std::vector<ClassSymbol::Method> constructors, std::vector<ClassSymbol::Method> methods, bool isPublic) {
-        classes[className] = ClassSymbol(findModuleScope()->name, className, std::move(fields), std::move(constructors), std::move(methods), isPublic);
+    void Scope::createClass(std::string className, ClassSymbol* baseClass, std::vector<ClassSymbol::Field> fields, std::vector<ClassSymbol::Method> constructors, std::vector<ClassSymbol::Method> methods, bool isPublic) {
+        classes[className] = ClassSymbol(findModuleScope()->name, className, baseClass, std::move(fields), std::move(constructors), std::move(methods), isPublic);
     }
 
-    void Scope::createFunction(std::string functionName, FunctionType* type, u16 modifiers) {
-        functions.emplace_back(findModuleScope()->name, std::move(functionName), type, modifiers);
+    FunctionSymbol* Scope::createFunction(std::string functionName, FunctionType* type, u16 modifiers) {
+        functions.push_back(std::make_unique<FunctionSymbol>(findModuleScope()->name, std::move(functionName), type, modifiers));
+        return functions.back().get();
     }
 }

@@ -5,8 +5,11 @@
 #include "Bibble/parser/ast/expression/BinaryExpression.h"
 #include "Bibble/parser/ast/expression/BooleanLiteral.h"
 #include "Bibble/parser/ast/expression/CastExpression.h"
+#include "Bibble/parser/ast/expression/NewArrayExpression.h"
 #include "Bibble/parser/ast/expression/NullLiteral.h"
 #include "Bibble/parser/ast/expression/UnaryExpression.h"
+
+#include "Bibble/type/ArrayType.h"
 
 #include <cinttypes>
 #include <format>
@@ -62,6 +65,7 @@ namespace parser {
     int Parser::getBinaryOperatorPrecedence(lexer::TokenType tokenType) {
         switch (tokenType) {
             case lexer::TokenType::LeftParen:
+            case lexer::TokenType::LeftBracket:
             case lexer::TokenType::Dot:
                 return 90;
 
@@ -105,7 +109,7 @@ namespace parser {
         return 0;
     }
 
-    Type* Parser::parseType(bool failable) {
+    Type* Parser::parseType(bool failable, bool failableArray) {
         auto ExpectToken = [this, failable](lexer::TokenType type) {
             if (failable) {
                 return current().getTokenType() != type;
@@ -163,6 +167,23 @@ namespace parser {
                                     std::format("unknown type name '{}{}{}'", fmt::bold, token.getText(), fmt::defaults));
                 std::exit(1);
             }
+        }
+
+        while (current().getTokenType() == lexer::TokenType::LeftBracket) {
+            consume();
+            if (failableArray) {
+                if (current().getTokenType() != lexer::TokenType::RightBracket) {
+                    mPosition--;
+                    break;
+                }
+            } else if (ExpectToken(lexer::TokenType::RightBracket)) {
+                mPosition = startPosition;
+                return nullptr;
+            }
+
+            consume();
+
+            type = ArrayType::Create(type);
         }
 
         return type;
@@ -251,6 +272,13 @@ namespace parser {
 
             if (operatorToken.getTokenType() == lexer::TokenType::LeftParen) {
                 left = parseCallExpression(std::move(left));
+            } else if (operatorToken.getTokenType() == lexer::TokenType::LeftBracket) {
+                ASTNodePtr index = parseExpression();
+
+                expectToken(lexer::TokenType::RightBracket);
+                consume();
+
+                left = std::make_unique<BinaryExpression>(mScope, std::move(left), BinaryExpression::Operator::Index, std::move(index), std::move(operatorToken));
             } else if (operatorToken.getTokenType() == lexer::TokenType::Dot) {
                 left = parseMemberAccess(std::move(left));
             } else {
@@ -416,9 +444,34 @@ namespace parser {
         auto token = current();
         std::string name = std::string(consume().getText());
 
+        ClassType* baseType;
+
+        if (current().getTokenType() == lexer::TokenType::ExtendsKeyword) {
+            auto extendsStart = current().getStartLocation();
+
+            consume();
+
+            Type* type = parseType();
+
+            if (!type->isClassType()) {
+                mDiag.compilerError(extendsStart,
+                                    peek(-1).getEndLocation(),
+                                    "class can only extend a class type");
+                std::exit(1);
+            }
+
+            baseType = static_cast<ClassType*>(type);
+        } else {
+            if (mScope->findModuleScope()->name == "std/Primitives" && name == "Object") baseType = nullptr;
+            else baseType = static_cast<ClassType*>(Type::Get("object"));
+        }
+
+        ClassType::Create(mScope->findModuleScope()->name, name, baseType);
+
         if (current().getTokenType() == lexer::TokenType::Semicolon) { // declaration
             consume();
-            mScope->createClass(std::move(name), {}, { { 0, "#Init", FunctionType::Create(Type::Get("void"), {}) } }, {}, false);
+            mScope->createClass(std::move(name), baseType == nullptr ? nullptr : mScope->findClass(
+                    { std::string(baseType->getModuleName()), std::string(baseType->getName()) }),{}, {}, {}, false);
             return nullptr;
         }
 
@@ -752,10 +805,21 @@ namespace parser {
         return std::make_unique<CallExpression>(mScope, std::move(callee), std::move(parameters));
     }
 
-    NewExpressionPtr Parser::parseNewExpression() {
+    ASTNodePtr Parser::parseNewExpression() {
         auto token = consume(); // new
 
-        Type* type = parseType();
+        Type* type = parseType(false, true);
+
+        if (current().getTokenType() == lexer::TokenType::LeftBracket)  {
+            consume();
+
+            ASTNodePtr length = parseExpression();
+
+            expectToken(lexer::TokenType::RightBracket);
+            consume();
+
+            return std::make_unique<NewArrayExpression>(mScope, ArrayType::Create(type), std::move(length), std::move(token));
+        }
 
         //TODO: unsafe new without constructor call
 
@@ -847,6 +911,8 @@ namespace parser {
         if (current().getTokenType() == lexer::TokenType::Equal) {
             consume();
             initialValue = parseExpression();
+
+            if (type == nullptr) type = initialValue->getType();
         }
 
         return std::make_unique<VariableDeclaration>(mScope, type, std::move(name), std::move(initialValue), std::move(token));

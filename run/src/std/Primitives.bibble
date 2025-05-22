@@ -1,0 +1,17 @@
+class Object {
+    int hashcode() {
+        return 123;
+    }
+}
+
+class String {
+    private char[] data;
+
+    String(char[] data) {
+        this.data = data;
+    }
+
+    int hashcode() {
+        return 1;
+    }
+}

@@ -29,7 +29,7 @@ set(SOURCES
         src/type/ClassType.cpp
         src/symbol/Scope.cpp
         src/symbol/Import.cpp
-        src/parser/ImportParser.cpp
+        #src/parser/ImportParser.cpp
         src/parser/ast/Node.cpp
         src/parser/ast/global/Function.cpp
         src/parser/ast/global/ClassDeclaration.cpp
@@ -52,7 +52,9 @@ set(SOURCES
     src/parser/ast/expression/NewExpression.cpp
     src/diagnostic/Assert.cpp
     src/parser/ast/expression/NullLiteral.cpp
-    src/parser/ast/statement/ReturnStatement.cpp)
+    src/parser/ast/statement/ReturnStatement.cpp
+    src/type/ArrayType.cpp
+    src/parser/ast/expression/NewArrayExpression.cpp)
 set(HEADERS
     include/Bibble/diagnostic/Diagnostic.h
     include/Bibble/type/Type.h
@@ -89,7 +91,9 @@ set(HEADERS
     include/Bibble/parser/ast/expression/NewExpression.h
     include/Bibble/diagnostic/Assert.h
     include/Bibble/parser/ast/expression/NullLiteral.h
-    include/Bibble/parser/ast/statement/ReturnStatement.h)
+    include/Bibble/parser/ast/statement/ReturnStatement.h
+    include/Bibble/type/ArrayType.h
+    include/Bibble/parser/ast/expression/NewArrayExpression.h)
 
 source_group(TREE ${PROJECT_SOURCE_DIR} FILES ${SOURCES} ${HEADERS})
 

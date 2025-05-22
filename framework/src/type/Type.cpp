@@ -15,8 +15,7 @@
 bool init = false;
 
 std::unordered_map<std::string, std::unique_ptr<Type>, StringViewHash, StringViewEqual> types;
-extern std::vector<std::unique_ptr<ClassType>> classTypes;
-extern std::vector<std::unique_ptr<FunctionType>> functionTypes;
+std::unordered_map<std::string, Type*, StringViewHash, StringViewEqual> typeAliases;
 
 void Type::Init() {
     if (init) return;
@@ -34,13 +33,14 @@ void Type::Init() {
     types["handle"] = std::make_unique<HandleType>();
     types["void"] = std::make_unique<VoidType>();
 
-    types["string"] = std::make_unique<ClassType>("std.Primitives", "String");
+    typeAliases["object"] = ClassType::Create("std/Primitives", "Object", nullptr);
+    typeAliases["string"] = ClassType::Create("std/Primitives", "String", ClassType::Find("std/Primitives", "Object"));
 
     init = true;
 }
 
 bool Type::Exists(std::string_view name) {
-    return types.contains(name);
+    return types.contains(name) || typeAliases.contains(name);
 }
 
 Type* Type::Get(std::string_view name) {
@@ -48,5 +48,11 @@ Type* Type::Get(std::string_view name) {
     if (type != types.end()) {
         return type->second.get();
     }
+
+    auto alias = typeAliases.find(name);
+    if (alias != typeAliases.end()) {
+        return alias->second;
+    }
+
     return nullptr;
 }

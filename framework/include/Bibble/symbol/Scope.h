@@ -7,6 +7,7 @@
 #include "Bibble/type/FunctionType.h"
 
 #include <unordered_map>
+#include <unordered_set>
 
 struct StringViewHash {
     using is_transparent = void;
@@ -25,6 +26,42 @@ struct StringViewEqual {
 };
 
 namespace symbol {
+    struct Signature {
+        std::string_view name;
+        FunctionType* desc;
+
+        bool operator==(const Signature& other) const {
+            if (other.desc->getArgumentTypes().size() != desc->getArgumentTypes().size()) return false;
+            if (other.name != name) return false;
+
+            for (auto it = desc->getArgumentTypes().begin() + 1, it1 = other.desc->getArgumentTypes().begin() + 1; it != desc->getArgumentTypes().end(); ++it, ++it1) {
+                if (*it != *it1) return false;
+            }
+
+            return other.desc->getReturnType() == desc->getReturnType();
+        }
+    };
+}
+
+namespace std {
+    template<>
+    struct hash<symbol::Signature> {
+        std::size_t operator()(const symbol::Signature& signature) const {
+            std::size_t hash = std::hash<std::string_view>{}(signature.name);
+
+            for (auto it = signature.desc->getArgumentTypes().begin() + 1; it != signature.desc->getArgumentTypes().end(); ++it) {
+                hash ^= std::hash<Type*>{}(*it) + 0x9e3779b9 + (hash << 6) + (hash >> 2);
+            }
+            hash ^= std::hash<Type*>{}(signature.desc->getReturnType());
+
+            return hash;
+        }
+    };
+}
+
+namespace symbol {
+    struct FunctionSymbol;
+
     struct LocalSymbol {
         LocalSymbol() = default;
         LocalSymbol(u16 index, Type* type);
@@ -43,20 +80,27 @@ namespace symbol {
         struct Method {
             u16 modifiers;
             std::string name;
+            std::string realName; // ClassName::methodName
             FunctionType* type;
+
+            FunctionSymbol* function;
         };
 
         ClassSymbol() = default;
-        ClassSymbol(std::string moduleName, std::string name, std::vector<Field> fields, std::vector<Method> constructors, std::vector<Method> methods, bool isPublic);
+        ClassSymbol(std::string moduleName, std::string name, ClassSymbol* baseClass, std::vector<Field> fields, std::vector<Method> constructors, std::vector<Method> methods, bool isPublic);
 
         ClassType* getType() const;
 
         Field* getField(std::string_view name);
         Method* getMethod(std::string_view name);
 
+        std::vector<FunctionSymbol*> getCandidateMethods(std::string_view name);
+        bool getCandidateMethods(std::vector<FunctionSymbol*>& candidates, std::unordered_set<Signature>& seen, std::string_view name);
+
         bool isPublic;
         std::string moduleName;
         std::string name;
+        ClassSymbol* baseClass;
         std::vector<Field> fields;
         std::vector<Method> constructors;
         std::vector<Method> methods;
@@ -100,8 +144,8 @@ namespace symbol {
         FunctionSymbol* resolveFunctionSymbolDown(std::string_view name, FunctionType* type);
         FunctionSymbol* resolveFunctionSymbolDown(std::vector<std::string> names, FunctionType* type);
 
-        void createClass(std::string className, std::vector<ClassSymbol::Field> fields, std::vector<ClassSymbol::Method> constructors, std::vector<ClassSymbol::Method> methods, bool isPublic);
-        void createFunction(std::string functionName, FunctionType* type, u16 modifiers);
+        void createClass(std::string className, ClassSymbol* baseClass, std::vector<ClassSymbol::Field> fields, std::vector<ClassSymbol::Method> constructors, std::vector<ClassSymbol::Method> methods, bool isPublic);
+        FunctionSymbol* createFunction(std::string functionName, FunctionType* type, u16 modifiers);
 
         std::string name;
 
@@ -119,7 +163,7 @@ namespace symbol {
 
         std::unordered_map<std::string, LocalSymbol, StringViewHash, StringViewEqual> locals;
         std::unordered_map<std::string, ClassSymbol, StringViewHash, StringViewEqual> classes;
-        std::vector<FunctionSymbol> functions;
+        std::vector<std::unique_ptr<FunctionSymbol>> functions;
     };
 
     using ScopePtr = std::unique_ptr<Scope>;

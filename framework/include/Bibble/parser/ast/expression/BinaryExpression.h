@@ -26,6 +26,8 @@ namespace parser {
             GreaterEqual,
 
             Assign,
+
+            Index,
         };
 
         BinaryExpression(symbol::Scope* scope, ASTNodePtr left, lexer::TokenType operatorToken, ASTNodePtr right, lexer::Token token);

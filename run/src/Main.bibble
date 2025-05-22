@@ -1,62 +1,14 @@
 import std.IO;
+import std.Primitives;
+
 import vm.System;
-
-class Node;
-
-class Node {
-    Node next;
-    Node prev;
-    int value;
-
-    Node(int value) {
-        next = null;
-        prev = null;
-        this.value = value;
-    }
-}
-
-class LinkedList {
-    private Node first;
-    private Node last;
-
-    LinkedList() {
-        first = null;
-        last = null;
-    }
-
-    private void linkLast(Node node) {
-        if (first == null) {
-            first = node;
-            last = node;
-        } else {
-            last.next = node;
-            node.prev = last;
-            last = node;
-        }
-    }
-
-    void add(int value) {
-        linkLast(new Node(value));
-    }
-}
-
-int test() {
-    LinkedList list = new LinkedList();
-
-    list.add(1);
-    list.add(2);
-    list.add(3);
-
-    list = null;
-
-    return 0;
-}
 
 void main() {
     System::loadPlugin("Plugin");
 
-    Main::test();
+    var arr = new int[4];
 
-    IO::print(1);
-    IO::print(2);
+    arr[0] = "hey".hashcode();
+
+    IO::print(arr[0]);
 }

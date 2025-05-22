@@ -4,6 +4,8 @@
 #include "Bibble/parser/ast/expression/MemberAccess.h"
 #include "Bibble/parser/ast/expression/VariableExpression.h"
 
+#include "Bibble/type/ArrayType.h"
+
 #include <format>
 
 namespace parser {
@@ -54,6 +56,11 @@ namespace parser {
 
             case lexer::TokenType::Equal:
                 mOperator = Operator::Assign;
+                break;
+
+            case lexer::TokenType::LeftBracket:
+                mOperator = Operator::Index;
+                break;
 
             default:
                 break;
@@ -67,7 +74,7 @@ namespace parser {
             , mRight(std::move(right)) {}
 
     void BinaryExpression::codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag, bool statement) {
-        if (mOperator != Operator::Assign) {
+        if (mOperator != Operator::Assign && mOperator != Operator::Index) {
             mLeft->codegen(builder, ctx, diag, statement);
             mRight->codegen(builder, ctx, diag, statement);
         }
@@ -181,9 +188,33 @@ namespace parser {
                     builder.createSetField(memberAccess->getClassType(), field->type, field->name);
 
                     if (!statement) builder.createGetField(memberAccess->getClassType(), field->type, field->name);
+                } else if (auto binaryExpr = dynamic_cast<BinaryExpression*>(mLeft.get()); binaryExpr->mOperator == Operator::Index) {
+                    ASTNode* array = binaryExpr->mLeft.get();
+                    ASTNode* index = binaryExpr->mRight.get();
+
+                    array->codegen(builder, ctx, diag, false);
+                    index->codegen(builder, ctx, diag, false);
+                    mRight->codegen(builder, ctx, diag, false);
+
+                    builder.createArrayStore(array->getType());
+
+                    if (!statement) { // TODO: instruction that duplicates top element and places it 3 elements down
+                        array->codegen(builder, ctx, diag, false);
+                        index->codegen(builder, ctx, diag, false);
+
+                        builder.createArrayLoad(array->getType());
+                    }
                 } else {
                     diag.fatalError("TODO: error message");
                 }
+
+                break;
+
+            case Operator::Index:
+                mLeft->codegen(builder, ctx, diag, false);
+                mRight->codegen(builder, ctx, diag, false);
+
+                builder.createArrayLoad(mLeft->getType());
 
                 break;
         }
@@ -293,6 +324,35 @@ namespace parser {
                         exit = true;
                     }
                 }
+
+                mType = mLeft->getType();
+
+                break;
+
+            case Operator::Index:
+                if (!mLeft->getType()->isArrayType()) {
+                    diag.compilerError(mErrorToken.getStartLocation(),
+                                       mErrorToken.getEndLocation(),
+                                       std::format("no match for '{}operator []{}' with type '{}{}{}'",
+                                                   fmt::bold, fmt::defaults,
+                                                   fmt::bold, mLeft->getType()->getName(), fmt::defaults));
+                    exit = true;
+                }
+
+                if (!mRight->getType()->isIntegerType()) {
+                    if (mRight->implicitCast(diag, Type::Get("int"))) {
+                        mRight = Cast(mRight, Type::Get("int"));
+                    } else {
+                        diag.compilerError(mErrorToken.getStartLocation(),
+                                           mErrorToken.getEndLocation(),
+                                           std::format("no match for '{}operator []{}' with index type '{}{}{}'",
+                                                       fmt::bold, fmt::defaults,
+                                                       fmt::bold, mRight->getType()->getName(), fmt::defaults));
+                        exit = true;
+                    }
+                }
+
+                mType = static_cast<ArrayType*>(mLeft->getType())->getElementType();
 
                 break;
         }

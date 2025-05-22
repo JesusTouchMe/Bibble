@@ -112,17 +112,10 @@ namespace parser {
 
                 if (var->isImplicitMember()) {
                     auto scopeOwner = mScope->findOwner();
-                    ClassType* classType = scopeOwner->getType();
 
-                    std::vector<std::string> names = {
-                            std::string(classType->getModuleName()),
-                            std::string(classType->getName()),
-                            var->getName()
-                    };
+                    candidateFunctions = scopeOwner->getCandidateMethods(var->getName());
 
-                    candidateFunctions = mScope->getCandidateFunctions(names);
-
-                    errorName = classType->getName();
+                    errorName = scopeOwner->name;
                     errorName += "::" + var->getName();
 
                     mIsMemberFunction = true;
@@ -131,13 +124,9 @@ namespace parser {
                 }
             } else if (auto memberAccess = dynamic_cast<MemberAccess*>(mCallee.get())) {
                 ClassType* classType = memberAccess->mClassType;
-                std::vector<std::string> names = {
-                        std::string(classType->getModuleName()),
-                        std::string(classType->getName()),
-                        memberAccess->mId
-                };
+                symbol::ClassSymbol* classSymbol = mScope->findClass({ std::string(classType->getModuleName()), std::string(classType->getName()) });
 
-                candidateFunctions = mScope->getCandidateFunctions(names);
+                candidateFunctions = classSymbol->getCandidateMethods(memberAccess->getId());
 
                 errorName = classType->getName();
                 errorName += "::" + memberAccess->mId;

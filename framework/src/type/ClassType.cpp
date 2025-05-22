@@ -7,10 +7,11 @@
 #include <algorithm>
 #include <format>
 
-ClassType::ClassType(std::string_view moduleName, std::string_view name)
-    : Type(std::format("{}.{}", moduleName, name))
+ClassType::ClassType(std::string_view moduleName, std::string_view name, ClassType* baseType)
+    : Type(std::format("{}::{}", moduleName, name))
     , mModuleName(moduleName)
-    , mName(name) {}
+    , mName(name)
+    , mBaseType(baseType) {}
 
 std::string_view ClassType::getModuleName() const {
     return mModuleName;
@@ -18,6 +19,10 @@ std::string_view ClassType::getModuleName() const {
 
 std::string_view ClassType::getName() const {
     return mName;
+}
+
+ClassType* ClassType::getBaseType() const {
+    return mBaseType;
 }
 
 int ClassType::getStackSlots() const {
@@ -36,9 +41,16 @@ codegen::Type ClassType::getRuntimeType() const {
 }
 
 Type::CastLevel ClassType::castTo(Type* destType) const {
-    //TODO: Explicit casting to handle by opening a handle to the object in the VM, making it manually managed
-    //TODO: Implicit casting to base class
-    return CastLevel::Disallowed;
+    if (destType->isClassType()) {
+        const ClassType* current = this;
+
+        while (current != nullptr) {
+            if (current == destType) return Type::CastLevel::Implicit;
+            current = current->mBaseType;
+        }
+    }
+
+    return Type::CastLevel::Disallowed;
 }
 
 void ClassType::resolve(symbol::Scope* scope, diagnostic::Diagnostics& diag) {
@@ -53,9 +65,9 @@ bool ClassType::isClassType() const {
     return true;
 }
 
-std::vector<std::unique_ptr<ClassType>> classTypes;
+static std::vector<std::unique_ptr<ClassType>> classTypes;
 
-ClassType* ClassType::Create(std::string_view moduleName, std::string_view name) {
+ClassType* ClassType::Find(std::string_view moduleName, std::string_view name) {
     auto it = std::find_if(classTypes.begin(), classTypes.end(), [moduleName, name](const auto& type) {
         return type->mModuleName == moduleName && type->mName == name;
     });
@@ -64,7 +76,19 @@ ClassType* ClassType::Create(std::string_view moduleName, std::string_view name)
         return it->get();
     }
 
-    classTypes.push_back(std::make_unique<ClassType>(moduleName, name));
+    return nullptr;
+}
+
+ClassType* ClassType::Create(std::string_view moduleName, std::string_view name, ClassType* baseType) {
+    auto it = std::find_if(classTypes.begin(), classTypes.end(), [moduleName, name](const auto& type) {
+        return type->mModuleName == moduleName && type->mName == name;
+    });
+
+    if (it != classTypes.end()) {
+        return it->get();
+    }
+
+    classTypes.push_back(std::make_unique<ClassType>(moduleName, name, baseType));
     return classTypes.back().get();
 }
 

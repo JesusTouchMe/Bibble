@@ -2,6 +2,7 @@
 
 #include "Bibble/codegen/Builder.h"
 
+#include "Bibble/type/ArrayType.h"
 #include "Bibble/type/ClassType.h"
 #include "Bibble/type/IntegerType.h"
 
@@ -202,16 +203,103 @@ namespace codegen {
         }
     }
 
-    void Builder::createArrayLoad(::Type* type) {
-        assert(false && "not implemented");
+    void Builder::createArrayLoad(::Type* _arrayType) {
+        assert(_arrayType->isArrayType());
+
+        auto* arrayType = static_cast<ArrayType*>(_arrayType);
+
+        auto index = mContext.pop();
+        auto arrayRef = mContext.pop();
+
+        assert(index.type == Type::Category1_Primitive);
+        assert(arrayRef.type == Type::Category2_Reference);
+
+        if (arrayType->getElementType()->isIntegerType()) {
+            auto integerType = static_cast<IntegerType*>(arrayType->getElementType());
+            switch (integerType->getSize()) {
+                case IntegerType::Size::Byte:
+                    insert<InsnNode>(Opcodes::BALOAD);
+                    mContext.emplace(Type::Category1_Primitive);
+                    break;
+                case IntegerType::Size::Short:
+                    insert<InsnNode>(Opcodes::SALOAD);
+                    mContext.emplace(Type::Category1_Primitive);
+                    break;
+                case IntegerType::Size::Int:
+                    insert<InsnNode>(Opcodes::IALOAD);
+                    mContext.emplace(Type::Category1_Primitive);
+                    break;
+                case IntegerType::Size::Long:
+                    insert<InsnNode>(Opcodes::LALOAD);
+                    mContext.emplace(Type::Category2_Primitive);
+                    break;
+            }
+        } else if (arrayType->getElementType()->isCharType()) {
+            insert<InsnNode>(Opcodes::CALOAD);
+            mContext.emplace(Type::Category1_Primitive);
+        } else if (arrayType->getElementType()->isBooleanType()) {
+            insert<InsnNode>(Opcodes::BALOAD);
+            mContext.emplace(Type::Category1_Primitive);
+        } else if (arrayType->getElementType()->isHandleType()) {
+            insert<InsnNode>(Opcodes::HALOAD);
+            mContext.emplace(Type::Category2_Handle);
+        } else if (arrayType->getElementType()->isClassType() || arrayType->getElementType()->isArrayType()) {
+            insert<InsnNode>(Opcodes::RALOAD);
+            mContext.emplace(Type::Category2_Reference);
+        } else {
+            assert(false && "Unsupported type");
+        }
     }
 
-    void Builder::createArrayStore(::Type* type) {
-        assert(false && "not implemented");
+    void Builder::createArrayStore(::Type* _arrayType) {
+        assert(_arrayType->isArrayType());
+
+        auto* arrayType = static_cast<ArrayType*>(_arrayType);
+
+        auto value = mContext.pop();
+        auto index = mContext.pop();
+        auto arrayRef = mContext.pop();
+
+        assert(index.type == Type::Category1_Primitive);
+        assert(arrayRef.type == Type::Category2_Reference);
+
+        if (arrayType->getElementType()->isIntegerType()) {
+            auto integerType = static_cast<IntegerType*>(arrayType->getElementType());
+            switch (integerType->getSize()) {
+                case IntegerType::Size::Byte:
+                    insert<InsnNode>(Opcodes::BASTORE);
+                    break;
+                case IntegerType::Size::Short:
+                    insert<InsnNode>(Opcodes::SASTORE);
+                    break;
+                case IntegerType::Size::Int:
+                    insert<InsnNode>(Opcodes::IASTORE);
+                    break;
+                case IntegerType::Size::Long:
+                    insert<InsnNode>(Opcodes::LASTORE);
+                    break;
+            }
+        } else if (arrayType->getElementType()->isCharType()) {
+            insert<InsnNode>(Opcodes::CASTORE);
+        } else if (arrayType->getElementType()->isBooleanType()) {
+            insert<InsnNode>(Opcodes::BASTORE);
+        } else if (arrayType->getElementType()->isHandleType()) {
+            insert<InsnNode>(Opcodes::HASTORE);
+        } else if (arrayType->getElementType()->isClassType() || arrayType->getElementType()->isArrayType()) {
+            insert<InsnNode>(Opcodes::RASTORE);
+        } else {
+            assert(false && "Unsupported type");
+        }
     }
 
-    void Builder::createArrayLength(::Type* type) {
-        assert(false && "not implemented");
+    void Builder::createArrayLength(::Type* arrayType) {
+        assert(arrayType->isArrayType());
+
+        auto arrayRef = mContext.pop();
+        assert(arrayRef.type == Type::Category2_Reference);
+
+        insert<InsnNode>(Opcodes::ARRAYLENGTH);
+        mContext.emplace(Type::Category1_Primitive);
     }
 
     void Builder::createNew(::Type* type) {
@@ -222,8 +310,58 @@ namespace codegen {
         mContext.emplace(Type::Category2_Reference);
     }
 
-    void Builder::createNewArray(::Type* type) {
-        assert(false && "not implemented");
+    void Builder::createNewArray(::Type* _arrayType) {
+        assert(_arrayType->isArrayType());
+
+        auto* arrayType = static_cast<ArrayType*>(_arrayType);
+
+        auto length = mContext.pop();
+
+        assert(length.type == Type::Category1_Primitive);
+
+        if (arrayType->getElementType()->isClassType()) {
+            auto* classType = static_cast<ClassType*>(arrayType->getElementType());
+            insert<ClassInsnNode>(Opcodes::RNEWARRAY, classType->getModuleName(), classType->getName());
+            mContext.emplace(Type::Category2_Reference);
+
+            return;
+        } else if (arrayType->getElementType()->isArrayType()) {
+            //TODO: support runtime multidimensional arrays (T[][]) and compile-time multidimensional arrays (T[,])
+            assert(false && "unimplemented");
+        }
+
+        if (arrayType->getElementType()->isIntegerType()) {
+            auto integerType = static_cast<IntegerType*>(arrayType->getElementType());
+            switch (integerType->getSize()) {
+                case IntegerType::Size::Byte:
+                    insert<IntInsnNode>(Opcodes::NEWARRAY, OperandSize::BYTE, ::Type::T_BYTE);
+                    mContext.emplace(Type::Category2_Reference);
+                    break;
+                case IntegerType::Size::Short:
+                    insert<IntInsnNode>(Opcodes::NEWARRAY, OperandSize::BYTE, ::Type::T_SHORT);
+                    mContext.emplace(Type::Category2_Reference);
+                    break;
+                case IntegerType::Size::Int:
+                    insert<IntInsnNode>(Opcodes::NEWARRAY, OperandSize::BYTE, ::Type::T_INT);
+                    mContext.emplace(Type::Category2_Reference);
+                    break;
+                case IntegerType::Size::Long:
+                    insert<IntInsnNode>(Opcodes::NEWARRAY, OperandSize::BYTE, ::Type::T_LONG);
+                    mContext.emplace(Type::Category2_Reference);
+                    break;
+            }
+        } else if (arrayType->getElementType()->isCharType()) {
+            insert<IntInsnNode>(Opcodes::NEWARRAY, OperandSize::BYTE, ::Type::T_CHAR);
+            mContext.emplace(Type::Category2_Reference);
+        } else if (arrayType->getElementType()->isBooleanType()) {
+            insert<IntInsnNode>(Opcodes::NEWARRAY, OperandSize::BYTE, ::Type::T_BOOL);
+            mContext.emplace(Type::Category2_Reference);
+        } else if (arrayType->getElementType()->isHandleType()) {
+            insert<IntInsnNode>(Opcodes::NEWARRAY, OperandSize::BYTE, ::Type::T_HANDLE);
+            mContext.emplace(Type::Category2_Reference);
+        } else {
+            assert(false && "Unsupported type");
+        }
     }
 
     void Builder::createIsInstance(::Type* checkedType) {
