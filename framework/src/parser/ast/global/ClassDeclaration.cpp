@@ -10,14 +10,15 @@ namespace parser {
         , name(std::move(name)) {}
 
     ClassMethod::ClassMethod(std::vector<FunctionModifier> modifiers, std::string name, FunctionType* type, std::vector<FunctionArgument> arguments,
-                             std::vector<ASTNodePtr> body, symbol::ScopePtr scope, lexer::Token errorToken)
+                             std::vector<ASTNodePtr> body, symbol::ScopePtr scope, lexer::Token errorToken, bool overrides)
         : modifiers(std::move(modifiers))
         , name(std::move(name))
         , type(type)
         , arguments(std::move(arguments))
         , body(std::move(body))
         , scope(std::move(scope))
-        , errorToken(std::move(errorToken)) {}
+        , errorToken(std::move(errorToken))
+        , overrides(overrides) {}
 
     ClassDeclaration::ClassDeclaration(std::vector<ClassModifier> modifiers, std::string name,
                                        std::vector<ClassField> fields, std::vector<ClassMethod> constructors, std::vector<ClassMethod> methods,
@@ -33,6 +34,8 @@ namespace parser {
         mType = classType = ClassType::Find(mOwnScope->findModuleScope()->name, mName);
 
         classType = classType->getBaseType();
+
+        symbol::ClassSymbol* baseClass = classType == nullptr ? nullptr : mScope->findClass({ std::string(classType->getModuleName()), std::string(classType->getName()) });
 
         std::vector<symbol::ClassSymbol::Field> fieldSymbols;
         std::vector<symbol::ClassSymbol::Method> constructorSymbols;
@@ -51,7 +54,7 @@ namespace parser {
             mConstructors.emplace_back(std::vector<FunctionModifier>(), "#Init", FunctionType::Create(Type::Get("void"), {}),
                                        std::vector<FunctionArgument>(), std::vector<ASTNodePtr>(),
                                        std::make_unique<symbol::Scope>(mOwnScope.get(), "", false, Type::Get("void")),
-                                       lexer::Token());
+                                       lexer::Token(), false);
             mConstructors.back().scope->currentVariableIndex = 0;
         }
 
@@ -61,6 +64,8 @@ namespace parser {
                 methodModifiers |= static_cast<u16>(modifier);
             }
 
+            auto languageType = method.type;
+
             auto argumentTypes = method.type->getArgumentTypes();
             argumentTypes.insert(argumentTypes.begin(), mType);
             method.type = FunctionType::Create(method.type->getReturnType(), std::move(argumentTypes));
@@ -77,7 +82,7 @@ namespace parser {
                 *index += argument.type->getStackSlots();
             }
 
-            constructorSymbols.push_back({ methodModifiers, method.name, mName + "::" + method.name, method.type, functionSymbol });
+            constructorSymbols.push_back({ methodModifiers, method.name, mName + "::" + method.name, languageType, method.type, functionSymbol });
         }
 
         for (auto& method : mMethods) {
@@ -86,14 +91,37 @@ namespace parser {
                 methodModifiers |= static_cast<u16>(modifier);
             }
 
+            if (method.overrides) {
+                if (baseClass == nullptr) {
+                    //TODO: error
+                    int a = 5;
+                }
+
+                symbol::ClassSymbol* current = baseClass;
+                symbol::ClassSymbol::Method* foundMethod = nullptr;
+                while (current != nullptr) {
+                    foundMethod = current->getMethod(method.name, method.type);
+                    if (foundMethod != nullptr) break;
+
+                    current = current->baseClass;
+                }
+
+                if (foundMethod == nullptr) {
+                    //TODO: error
+                    int a = 5;
+                }
+            }
+
+            auto languageType = method.type;
+
             auto argumentTypes = method.type->getArgumentTypes();
             argumentTypes.insert(argumentTypes.begin(), mType);
             method.type = FunctionType::Create(method.type->getReturnType(), std::move(argumentTypes));
 
+            method.arguments.insert(method.arguments.begin(), FunctionArgument(mType, "this"));
+
             auto methodScope = method.scope->parent;
             symbol::FunctionSymbol* functionSymbol = methodScope->createFunction(mName + "::" + method.name, method.type, methodModifiers);
-
-            method.arguments.insert(method.arguments.begin(), FunctionArgument(mType, "this"));
 
             int* index = method.scope->findVariableIndex();
             for (auto& argument : method.arguments) {
@@ -102,7 +130,7 @@ namespace parser {
                 *index += argument.type->getStackSlots();
             }
 
-            methodSymbols.push_back({ methodModifiers, method.name, mName + "::" + method.name, method.type, functionSymbol });
+            methodSymbols.push_back({ methodModifiers, method.name, mName + "::" + method.name, languageType, method.type, functionSymbol });
         }
 
         bool isPublic = false;
@@ -114,8 +142,6 @@ namespace parser {
                 break;
             }
         }
-
-        symbol::ClassSymbol* baseClass = classType == nullptr ? nullptr : mScope->findClass({ std::string(classType->getModuleName()), std::string(classType->getName()) });
 
         if (baseClass == nullptr && classType != nullptr) {
             //TODO: error

@@ -35,9 +35,9 @@ namespace symbol {
         else return nullptr;
     }
 
-    ClassSymbol::Method* ClassSymbol::getMethod(std::string_view name) {
-        auto it = std::find_if(methods.begin(), methods.end(), [&name](const Method& method) {
-            return method.name == name;
+    ClassSymbol::Method* ClassSymbol::getMethod(std::string_view name, FunctionType* type) {
+        auto it = std::find_if(methods.begin(), methods.end(), [name, type](const Method& method) {
+            return method.name == name && (type == nullptr || method.languageType == type);
         });
 
         if (it != methods.end()) return &*it;

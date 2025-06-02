@@ -11,7 +11,7 @@ class String {
         this.data = data;
     }
 
-    int hashcode() {
+    int hashcode() override {
         return 1;
     }
 }

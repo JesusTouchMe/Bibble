@@ -81,6 +81,7 @@ namespace symbol {
             u16 modifiers;
             std::string name;
             std::string realName; // ClassName::methodName
+            FunctionType* languageType; // The type it looks to have in the language. e.g. void()
             FunctionType* type;
 
             FunctionSymbol* function;
@@ -92,7 +93,7 @@ namespace symbol {
         ClassType* getType() const;
 
         Field* getField(std::string_view name);
-        Method* getMethod(std::string_view name);
+        Method* getMethod(std::string_view name, FunctionType* type = nullptr);
 
         std::vector<FunctionSymbol*> getCandidateMethods(std::string_view name);
         bool getCandidateMethods(std::vector<FunctionSymbol*>& candidates, std::unordered_set<Signature>& seen, std::string_view name);

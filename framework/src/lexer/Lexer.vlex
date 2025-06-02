@@ -32,6 +32,8 @@ tokens {
     extends
     import
 
+    override
+
     new
 
     native

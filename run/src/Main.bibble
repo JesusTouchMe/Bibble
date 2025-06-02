@@ -10,5 +10,5 @@ void main() {
 
     arr[0] = "hey".hashcode();
 
-    IO::print(arr[0]);
+    IO::print(arr.length);
 }

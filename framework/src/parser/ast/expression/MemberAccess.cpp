@@ -32,13 +32,21 @@ namespace parser {
 
         mClass->codegen(builder, ctx, diag, false);
 
-        auto field = mClassSymbol->getField(mId);
+        if (mClass->getType()->isArrayType()) {
+            builder.createArrayLength(mClass->getType());
+        } else {
+            auto field = mClassSymbol->getField(mId);
 
-        builder.createGetField(mClassType, field->type, field->name);
+            builder.createGetField(mClassType, field->type, field->name);
+        }
     }
 
     void MemberAccess::semanticCheck(diagnostic::Diagnostics& diag, bool& exit, bool statement) {
         mClass->semanticCheck(diag, exit, statement);
+
+        if (mClass->getType()->isArrayType()) {
+            return;
+        }
 
         auto field = mClassSymbol->getField(mId);
         auto scopeOwner = mScope->findOwner();
@@ -77,6 +85,11 @@ namespace parser {
 
     void MemberAccess::typeCheck(diagnostic::Diagnostics& diag, bool& exit) {
         mClass->typeCheck(diag, exit);
+
+        if (mClass->getType()->isArrayType() && mId == "length") {
+            mType = Type::Get("int");
+            return;
+        }
 
         if (!mClass->getType()->isClassType()) {
             diag.compilerError(mOperatorToken.getStartLocation(),

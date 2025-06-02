@@ -568,7 +568,7 @@ namespace parser {
                                       std::format("constructor '{}{}{}' marked native",
                                                   fmt::bold, className, fmt::defaults));
 
-                constructors.emplace_back(std::move(modifiers), "#Init", functionType, std::move(arguments), std::vector<ASTNodePtr>(), std::move(scope), std::move(token));
+                constructors.emplace_back(std::move(modifiers), "#Init", functionType, std::move(arguments), std::vector<ASTNodePtr>(), std::move(scope), std::move(token), false);
                 return;
             }
 
@@ -585,7 +585,7 @@ namespace parser {
 
             mScope = scope->parent;
 
-            constructors.emplace_back(std::move(modifiers), "#Init", functionType, std::move(arguments), std::move(body), std::move(scope), std::move(token));
+            constructors.emplace_back(std::move(modifiers), "#Init", functionType, std::move(arguments), std::move(body), std::move(scope), std::move(token), false);
             return;
         }
 
@@ -636,6 +636,13 @@ namespace parser {
             }
             consume();
 
+            bool overrides = false;
+
+            if (current().getTokenType() == lexer::TokenType::OverrideKeyword) {
+                overrides = true;
+                consume();
+            }
+
             FunctionType* functionType = FunctionType::Create(type, std::move(argumentTypes));
 
             symbol::ScopePtr scope = std::make_unique<symbol::Scope>(mScope, "", false, type);
@@ -647,7 +654,7 @@ namespace parser {
                 consume();
                 mScope = scope->parent;
 
-                methods.emplace_back(std::move(modifiers), std::move(name), functionType, std::move(arguments), std::vector<ASTNodePtr>(), std::move(scope), std::move(token));
+                methods.emplace_back(std::move(modifiers), std::move(name), functionType, std::move(arguments), std::vector<ASTNodePtr>(), std::move(scope), std::move(token), overrides);
                 return;
             }
 
@@ -663,7 +670,7 @@ namespace parser {
             consume();
 
             mScope = scope->parent;
-            methods.emplace_back(std::move(modifiers), std::move(name), functionType, std::move(arguments), std::move(body), std::move(scope), std::move(token));
+            methods.emplace_back(std::move(modifiers), std::move(name), functionType, std::move(arguments), std::move(body), std::move(scope), std::move(token), overrides);
         } else { // field
             std::vector<FieldModifier> modifiers;
             for (auto& modifierToken : modifierTokens) {
