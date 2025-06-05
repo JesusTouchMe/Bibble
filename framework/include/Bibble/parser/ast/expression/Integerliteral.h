@@ -12,7 +12,7 @@
 namespace parser {
     class IntegerLiteral : public ASTNode {
     public:
-        IntegerLiteral(symbol::Scope* scope, std::intmax_t value, lexer::Token token);
+        IntegerLiteral(symbol::Scope* scope, std::intmax_t value, Type* type, lexer::Token token);
 
         void codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag, bool statement) override;
 

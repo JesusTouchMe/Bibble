@@ -8,8 +8,8 @@
 #include <limits>
 
 namespace parser {
-    IntegerLiteral::IntegerLiteral(symbol::Scope* scope, std::intmax_t value, lexer::Token token)
-        : ASTNode(scope, Type::Get("int"), std::move(token))
+    IntegerLiteral::IntegerLiteral(symbol::Scope* scope, std::intmax_t value, Type* type, lexer::Token token)
+        : ASTNode(scope, type, std::move(token))
         , mValue(value) {}
 
     void IntegerLiteral::codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag, bool statement) {

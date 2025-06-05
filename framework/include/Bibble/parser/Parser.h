@@ -70,6 +70,7 @@ namespace parser {
 
         ASTNodePtr parseParenExpression();
         IntegerLiteralPtr parseIntegerLiteral();
+        IntegerLiteralPtr parseCharacterLiteral();
         StringLiteralPtr parseStringLiteral();
         MemberAccessPtr parseMemberAccess(ASTNodePtr classNode);
         VariableExpressionPtr parseVariableExpression();

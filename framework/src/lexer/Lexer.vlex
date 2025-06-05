@@ -26,6 +26,7 @@ tokens {
 
     _integer_literal
     _string_literal
+    _character_literal
     _identifier
 
     class
@@ -59,5 +60,11 @@ tokens {
     long Type
     handle Type
     string Type
+    object Type
     void Type
+}
+
+comments {
+    //
+    /* close */
 }
