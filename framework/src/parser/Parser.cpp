@@ -310,6 +310,9 @@ namespace parser {
             case lexer::TokenType::IntegerLiteral:
                 return parseIntegerLiteral();
 
+            case lexer::TokenType::CharacterLiteral:
+                return parseCharacterLiteral();
+
             case lexer::TokenType::StringLiteral:
                 return parseStringLiteral();
 
@@ -761,7 +764,13 @@ namespace parser {
         auto token = consume();
         std::string text = std::string(token.getText());
 
-        return std::make_unique<IntegerLiteral>(mScope, std::strtoimax(text.c_str(), nullptr, 0), std::move(token));
+        return std::make_unique<IntegerLiteral>(mScope, std::strtoimax(text.c_str(), nullptr, 0), Type::Get("int"), std::move(token));
+    }
+
+    IntegerLiteralPtr Parser::parseCharacterLiteral() {
+        auto token = consume();
+        char value = token.getText()[0];
+        return std::make_unique<IntegerLiteral>(mScope, value, Type::Get("char"), std::move(token));
     }
 
     StringLiteralPtr Parser::parseStringLiteral() {

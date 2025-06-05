@@ -6,6 +6,15 @@ import vm.System;
 void main() {
     System::loadPlugin("Plugin");
 
+    var chars = new char[5];
+    chars[0] = 'h';
+    chars[1] = 'e';
+    chars[2] = 'l';
+    chars[3] = 'l';
+    chars[4] = 'o';
+
+    var str = new string(chars);
+
     var arr = new int[4];
 
     arr[0] = "hey".hashcode();

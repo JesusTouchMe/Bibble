@@ -86,14 +86,11 @@ namespace parser {
     symbol::FunctionSymbol* NewExpression::getBestViableConstructor(diagnostic::Diagnostics& diag, bool& exit) {
         std::vector<symbol::FunctionSymbol*> candidateConstructors;
         auto classType = static_cast<ClassType*>(mType);
+        symbol::ClassSymbol* classSymbol = mScope->findClass({ std::string(classType->getModuleName()), std::string(classType->getName()) });
 
-        std::vector<std::string> names = {
-                std::string(classType->getModuleName()),
-                std::string(classType->getName()),
-                "#Init"
-        };
-
-        candidateConstructors = mScope->getCandidateFunctions(names);
+        for (const auto& constructor : classSymbol->constructors) {
+            candidateConstructors.push_back(constructor.function);
+        }
 
         for (auto it = candidateConstructors.begin(); it != candidateConstructors.end();) {
             auto candidate = *it;
