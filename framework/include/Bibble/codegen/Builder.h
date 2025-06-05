@@ -103,10 +103,6 @@ namespace codegen {
 
         void createReturn(::Type* returnType);
 
-        void createBreakpoint();
-        void createReserve1();
-        void createReserve2();
-
     private:
         Context& mContext;
         InsnList* mInsertPoint;

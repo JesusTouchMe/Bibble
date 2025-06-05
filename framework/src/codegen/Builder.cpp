@@ -645,16 +645,4 @@ namespace codegen {
                 break;
         }
     }
-
-    void Builder::createBreakpoint() {
-        insert<InsnNode>(Opcodes::BREAKPOINT);
-    }
-
-    void Builder::createReserve1() {
-        insert<InsnNode>(Opcodes::RESERVE1);
-    }
-
-    void Builder::createReserve2() {
-        insert<InsnNode>(Opcodes::RESERVE2);
-    }
 }
