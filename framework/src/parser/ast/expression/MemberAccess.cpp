@@ -2,6 +2,8 @@
 
 #include "Bibble/parser/ast/expression/MemberAccess.h"
 
+#include "Bibble/type/ViewType.h"
+
 #include <format>
 
 namespace parser {
@@ -9,7 +11,9 @@ namespace parser {
         : ASTNode(scope, std::move(token))
         , mOperatorToken(std::move(operatorToken))
         , mClass(std::move(classNode))
-        , mId(std::move(id)) {}
+        , mId(std::move(id))
+        , mClassSymbol(nullptr)
+        , mClassType(nullptr) {}
 
     ASTNode* MemberAccess::getClass() const {
         return mClass.get();
@@ -91,7 +95,7 @@ namespace parser {
             return;
         }
 
-        if (!mClass->getType()->isClassType()) {
+        if (!mClass->getType()->isClassView()) {
             diag.compilerError(mOperatorToken.getStartLocation(),
                                mOperatorToken.getEndLocation(),
                                std::format("'{}operator .{}' used on non-class value '{}{}{}'",
@@ -101,7 +105,11 @@ namespace parser {
             return;
         }
 
-        mClassType = static_cast<ClassType*>(mClass->getType());
+        if (mClass->getType()->isViewType()) {
+            mClassType = static_cast<ClassType*>(static_cast<ViewType*>(mClass->getType())->getBaseType());
+        } else {
+            mClassType = static_cast<ClassType*>(mClass->getType());
+        }
         mClassSymbol = mScope->findClass({ std::string(mClassType->getModuleName()), std::string(mClassType->getName()) });
 
         if (mClassSymbol == nullptr) {
@@ -111,9 +119,24 @@ namespace parser {
         auto field = mClassSymbol->getField(mId);
 
         if (field != nullptr) {
-            mType = field->type;
+            if (mClass->getType()->isViewType()) {
+                mType = ViewType::Create(field->type);
+            } else {
+                mType = field->type;
+            }
         } else {
-            auto method = mClassSymbol->getMethod(mId);
+            bool view = mClass->getType()->isViewType();
+
+            if (!view) {
+                auto method = mClassSymbol->getMethod(mId);
+
+                if (method != nullptr) {
+                    mType = method->type->getReturnType();
+                    return;
+                }
+            }
+
+            auto method = mClassSymbol->getMethod( mId + ".v");
 
             if (method != nullptr) {
                 mType = method->type->getReturnType();

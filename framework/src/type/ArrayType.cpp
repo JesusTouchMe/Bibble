@@ -1,6 +1,7 @@
 // Copyright 2025 JesusTouchMe
 
 #include "Bibble/type/ArrayType.h"
+#include "Bibble/type/ViewType.h"
 
 #include <algorithm>
 #include <format>
@@ -26,11 +27,21 @@ codegen::Type ArrayType::getRuntimeType() const {
 }
 
 Type::CastLevel ArrayType::castTo(Type* destType) const {
-    //TODO: implicit cast if base type is object and destType's base type is an object that can cast to ours
-    return Type::CastLevel::Disallowed;
+    if (destType->isViewType()) {
+        auto viewType = static_cast<ViewType*>(destType);
+        if (viewType->getBaseType() == this) {
+            return CastLevel::Implicit;
+        }
+    }
+
+    return CastLevel::Disallowed;
 }
 
 bool ArrayType::isArrayType() const {
+    return true;
+}
+
+bool ArrayType::isArrayView() const {
     return true;
 }
 

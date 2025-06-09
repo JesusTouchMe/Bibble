@@ -54,7 +54,8 @@ set(SOURCES
     src/parser/ast/expression/NullLiteral.cpp
     src/parser/ast/statement/ReturnStatement.cpp
     src/type/ArrayType.cpp
-    src/parser/ast/expression/NewArrayExpression.cpp)
+    src/parser/ast/expression/NewArrayExpression.cpp
+    src/type/ViewType.cpp)
 set(HEADERS
     include/Bibble/diagnostic/Diagnostic.h
     include/Bibble/type/Type.h
@@ -93,7 +94,8 @@ set(HEADERS
     include/Bibble/parser/ast/expression/NullLiteral.h
     include/Bibble/parser/ast/statement/ReturnStatement.h
     include/Bibble/type/ArrayType.h
-    include/Bibble/parser/ast/expression/NewArrayExpression.h)
+    include/Bibble/parser/ast/expression/NewArrayExpression.h
+    include/Bibble/type/ViewType.h)
 
 source_group(TREE ${PROJECT_SOURCE_DIR} FILES ${SOURCES} ${HEADERS})
 

@@ -8,12 +8,7 @@ namespace parser {
     VariableDeclaration::VariableDeclaration(symbol::Scope* scope, Type* type, std::string name, ASTNodePtr initialValue, lexer::Token token)
         : ASTNode(scope, type, std::move(token))
         , mName(std::move(name))
-        , mInitialValue(std::move(initialValue)) {
-        int* index = mScope->findVariableIndex();
-        mScope->locals[mName] = symbol::LocalSymbol(*index, type);
-
-        *index += type->getStackSlots();
-    }
+        , mInitialValue(std::move(initialValue)) {}
 
     void VariableDeclaration::codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag, bool statement) {
         if (mInitialValue) {
@@ -49,8 +44,12 @@ namespace parser {
             mInitialValue->typeCheck(diag, exit);
 
             mType = mInitialValue->getType();
-            mScope->findLocal(mName)->type = mType;
         }
+
+        int* index = mScope->findVariableIndex();
+        mScope->locals[mName] = symbol::LocalSymbol(*index, mType);
+
+        *index += mType->getStackSlots();
 
         if (mType->isVoidType()) {
             diag.compilerError(mErrorToken.getStartLocation(),

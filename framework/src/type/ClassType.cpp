@@ -3,6 +3,7 @@
 #include "Bibble/symbol/Scope.h"
 
 #include "Bibble/type/ClassType.h"
+#include "Bibble/type/ViewType.h"
 
 #include <algorithm>
 #include <format>
@@ -41,16 +42,21 @@ codegen::Type ClassType::getRuntimeType() const {
 }
 
 Type::CastLevel ClassType::castTo(Type* destType) const {
+    if (destType->isViewType()) {
+        auto viewType = static_cast<ViewType*>(destType);
+        destType = viewType->getBaseType();
+    }
+
     if (destType->isClassType()) {
         const ClassType* current = this;
 
         while (current != nullptr) {
-            if (current == destType) return Type::CastLevel::Implicit;
+            if (current == destType) return CastLevel::Implicit;
             current = current->mBaseType;
         }
     }
 
-    return Type::CastLevel::Disallowed;
+    return CastLevel::Disallowed;
 }
 
 void ClassType::resolve(symbol::Scope* scope, diagnostic::Diagnostics& diag) {
@@ -62,6 +68,10 @@ void ClassType::resolve(symbol::Scope* scope, diagnostic::Diagnostics& diag) {
 }
 
 bool ClassType::isClassType() const {
+    return true;
+}
+
+bool ClassType::isClassView() const {
     return true;
 }
 

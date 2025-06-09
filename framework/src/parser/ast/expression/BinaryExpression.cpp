@@ -5,8 +5,10 @@
 #include "Bibble/parser/ast/expression/VariableExpression.h"
 
 #include "Bibble/type/ArrayType.h"
+#include "Bibble/type/ViewType.h"
 
 #include <format>
+
 
 namespace parser {
     BinaryExpression::BinaryExpression(symbol::Scope* scope, ASTNodePtr left, lexer::TokenType operatorToken,ASTNodePtr right, lexer::Token token)
@@ -325,12 +327,23 @@ namespace parser {
                     }
                 }
 
+                if (auto binaryExpr = dynamic_cast<BinaryExpression*>(mLeft.get()); binaryExpr != nullptr && binaryExpr->mOperator == Operator::Index) {
+                    if (binaryExpr->mLeft->getType()->isViewType()) {
+                        diag.compilerError(mErrorToken.getStartLocation(),
+                                            mErrorToken.getEndLocation(),
+                                            std::format("attempt to mutate array view of type '{}{}{}'",
+                                                        fmt::bold, static_cast<ViewType*>(binaryExpr->mLeft->getType())->getBaseType()->getName(), fmt::defaults));
+                        exit = true;
+                        return;
+                    }
+                }
+
                 mType = mLeft->getType();
 
                 break;
 
             case Operator::Index:
-                if (!mLeft->getType()->isArrayType()) {
+                if (!mLeft->getType()->isArrayType() && !mLeft->getType()->isArrayView()) {
                     diag.compilerError(mErrorToken.getStartLocation(),
                                        mErrorToken.getEndLocation(),
                                        std::format("no match for '{}operator []{}' with type '{}{}{}'",
@@ -352,7 +365,11 @@ namespace parser {
                     }
                 }
 
-                mType = static_cast<ArrayType*>(mLeft->getType())->getElementType();
+                if (mLeft->getType()->isArrayType()) {
+                    mType = static_cast<ArrayType*>(mLeft->getType())->getElementType();
+                } else {
+                    mType = static_cast<ArrayType*>(static_cast<ViewType*>(mLeft->getType())->getBaseType())->getElementType();
+                }
 
                 break;
         }

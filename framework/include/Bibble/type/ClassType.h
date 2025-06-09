@@ -26,6 +26,7 @@ public:
     void resolve(symbol::Scope* scope, diagnostic::Diagnostics& diag) override;
 
     bool isClassType() const override;
+    bool isClassView() const override;
 
     static ClassType* Find(std::string_view moduleName, std::string_view name);
     static ClassType* Create(std::string_view moduleName, std::string_view name, ClassType* baseType);

@@ -51,6 +51,8 @@ tokens {
 
     var
 
+    view
+
     bool Type
     boolean Type
     byte Type

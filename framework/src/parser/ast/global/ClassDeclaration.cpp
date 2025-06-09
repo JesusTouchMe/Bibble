@@ -2,6 +2,8 @@
 
 #include "Bibble/parser/ast/global/ClassDeclaration.h"
 
+#include "Bibble/type/ViewType.h"
+
 namespace parser {
 
     ClassField::ClassField(std::vector<FieldModifier> modifiers, Type* type, std::string name)
@@ -10,7 +12,7 @@ namespace parser {
         , name(std::move(name)) {}
 
     ClassMethod::ClassMethod(std::vector<FunctionModifier> modifiers, std::string name, FunctionType* type, std::vector<FunctionArgument> arguments,
-                             std::vector<ASTNodePtr> body, symbol::ScopePtr scope, lexer::Token errorToken, bool overrides)
+                             std::vector<ASTNodePtr> body, symbol::ScopePtr scope, lexer::Token errorToken, bool overrides, bool viewSafe)
         : modifiers(std::move(modifiers))
         , name(std::move(name))
         , type(type)
@@ -18,7 +20,8 @@ namespace parser {
         , body(std::move(body))
         , scope(std::move(scope))
         , errorToken(std::move(errorToken))
-        , overrides(overrides) {}
+        , overrides(overrides)
+        , viewSafe(viewSafe) {}
 
     ClassDeclaration::ClassDeclaration(std::vector<ClassModifier> modifiers, std::string name,
                                        std::vector<ClassField> fields, std::vector<ClassMethod> constructors, std::vector<ClassMethod> methods,
@@ -54,7 +57,7 @@ namespace parser {
             mConstructors.emplace_back(std::vector<FunctionModifier>(), "#Init", FunctionType::Create(Type::Get("void"), {}),
                                        std::vector<FunctionArgument>(), std::vector<ASTNodePtr>(),
                                        std::make_unique<symbol::Scope>(mOwnScope.get(), "", false, Type::Get("void")),
-                                       lexer::Token(), false);
+                                       lexer::Token(), false, false);
             mConstructors.back().scope->currentVariableIndex = 0;
         }
 
@@ -114,13 +117,17 @@ namespace parser {
 
             auto languageType = method.type;
 
+            Type* thisType = method.viewSafe ? ViewType::Create(mType) : mType;
+
             auto argumentTypes = method.type->getArgumentTypes();
-            argumentTypes.insert(argumentTypes.begin(), mType);
+            argumentTypes.insert(argumentTypes.begin(), thisType);
             method.type = FunctionType::Create(method.type->getReturnType(), std::move(argumentTypes));
 
-            method.arguments.insert(method.arguments.begin(), FunctionArgument(mType, "this"));
+            method.arguments.insert(method.arguments.begin(), FunctionArgument(thisType, "this"));
 
             auto methodScope = method.scope->parent;
+            if (method.viewSafe) method.name += ".v";
+
             symbol::FunctionSymbol* functionSymbol = methodScope->createFunction(mName + "::" + method.name, method.type, methodModifiers);
 
             int* index = method.scope->findVariableIndex();

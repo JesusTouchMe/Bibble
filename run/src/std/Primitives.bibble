@@ -14,4 +14,8 @@ class String {
     int hashcode() override {
         return 1;
     }
+
+    view<char[]> getChars() view {
+        return data;
+    }
 }

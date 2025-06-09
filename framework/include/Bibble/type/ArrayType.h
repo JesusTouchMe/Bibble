@@ -18,6 +18,7 @@ public:
     CastLevel castTo(Type* destType) const override;
 
     bool isArrayType() const override;
+    bool isArrayView() const override;
 
     static ArrayType* Create(Type* elementType);
 

@@ -57,9 +57,14 @@ public:
     virtual bool isCharType()       const { return false; }
     virtual bool isHandleType()     const { return false; }
     virtual bool isClassType()      const { return false; }
+    virtual bool isClassView()      const { return false; }
     virtual bool isArrayType()      const { return false; }
+    virtual bool isArrayView()      const { return false; }
     virtual bool isVoidType()       const { return false; }
     virtual bool isFunctionType()   const { return false; }
+    virtual bool isViewType()       const { return false; }
+
+    bool isReferenceType() const { return isClassType() || isArrayType(); }
 
     std::string_view getName() const { return mName; }
 

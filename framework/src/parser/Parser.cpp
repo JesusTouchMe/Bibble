@@ -10,10 +10,12 @@
 #include "Bibble/parser/ast/expression/UnaryExpression.h"
 
 #include "Bibble/type/ArrayType.h"
+#include "Bibble/type/ViewType.h"
 
 #include <cinttypes>
 #include <format>
 #include <utility>
+
 
 namespace parser {
     Parser::Parser(std::vector<lexer::Token>& tokens, diagnostic::Diagnostics& diag,
@@ -113,7 +115,7 @@ namespace parser {
         auto ExpectToken = [this, failable](lexer::TokenType type) {
             if (failable) {
                 return current().getTokenType() != type;
-            }  else {
+            } else {
                 expectToken(type);
                 return false;
             }
@@ -127,6 +129,28 @@ namespace parser {
         if (current().getTokenType() == lexer::TokenType::Type) {
             token = current();
             type = Type::Get(consume().getText());
+        } else if (current().getTokenType() == lexer::TokenType::ViewKeyword) {
+            token = consume();
+
+            expectToken(lexer::TokenType::LessThan);
+            consume();
+
+            Type* baseType = parseType(failable, failableArray);
+
+            expectToken(lexer::TokenType::GreaterThan);
+            consume();
+
+            if (baseType != nullptr) {
+                if (!baseType->isReferenceType()) {
+                    mDiag.compilerError(token.getStartLocation(),
+                                        current().getEndLocation(),
+                                        std::format("cannot create view of non-reference type '{}{}{}'",
+                                                    fmt::bold, baseType->getName(), fmt::defaults));
+                    std::exit(1);
+                }
+
+                type = ViewType::Create(baseType);
+            }
         } else {
             //TODO: implement using full module names instead of an imported module name
             if (ExpectToken(lexer::TokenType::Identifier)) {
@@ -571,7 +595,7 @@ namespace parser {
                                       std::format("constructor '{}{}{}' marked native",
                                                   fmt::bold, className, fmt::defaults));
 
-                constructors.emplace_back(std::move(modifiers), "#Init", functionType, std::move(arguments), std::vector<ASTNodePtr>(), std::move(scope), std::move(token), false);
+                constructors.emplace_back(std::move(modifiers), "#Init", functionType, std::move(arguments), std::vector<ASTNodePtr>(), std::move(scope), std::move(token), false, false);
                 return;
             }
 
@@ -588,7 +612,7 @@ namespace parser {
 
             mScope = scope->parent;
 
-            constructors.emplace_back(std::move(modifiers), "#Init", functionType, std::move(arguments), std::move(body), std::move(scope), std::move(token), false);
+            constructors.emplace_back(std::move(modifiers), "#Init", functionType, std::move(arguments), std::move(body), std::move(scope), std::move(token), false, false);
             return;
         }
 
@@ -640,10 +664,20 @@ namespace parser {
             consume();
 
             bool overrides = false;
+            bool view = false;
 
-            if (current().getTokenType() == lexer::TokenType::OverrideKeyword) {
-                overrides = true;
-                consume();
+            while (true) {
+                auto tokenType = current().getTokenType();
+
+                if (tokenType == lexer::TokenType::OverrideKeyword) {
+                    overrides = true;
+                    consume();
+                } else if (tokenType == lexer::TokenType::ViewKeyword) {
+                    view = true;
+                    consume();
+                } else {
+                    break;
+                }
             }
 
             FunctionType* functionType = FunctionType::Create(type, std::move(argumentTypes));
@@ -657,7 +691,7 @@ namespace parser {
                 consume();
                 mScope = scope->parent;
 
-                methods.emplace_back(std::move(modifiers), std::move(name), functionType, std::move(arguments), std::vector<ASTNodePtr>(), std::move(scope), std::move(token), overrides);
+                methods.emplace_back(std::move(modifiers), std::move(name), functionType, std::move(arguments), std::vector<ASTNodePtr>(), std::move(scope), std::move(token), overrides, view);
                 return;
             }
 
@@ -673,7 +707,7 @@ namespace parser {
             consume();
 
             mScope = scope->parent;
-            methods.emplace_back(std::move(modifiers), std::move(name), functionType, std::move(arguments), std::move(body), std::move(scope), std::move(token), overrides);
+            methods.emplace_back(std::move(modifiers), std::move(name), functionType, std::move(arguments), std::move(body), std::move(scope), std::move(token), overrides, view);
         } else { // field
             std::vector<FieldModifier> modifiers;
             for (auto& modifierToken : modifierTokens) {

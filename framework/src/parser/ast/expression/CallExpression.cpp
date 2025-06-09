@@ -113,7 +113,19 @@ namespace parser {
                 if (var->isImplicitMember()) {
                     auto scopeOwner = mScope->findOwner();
 
-                    candidateFunctions = scopeOwner->getCandidateMethods(var->getName());
+                    symbol::LocalSymbol* localThis = mScope->findLocal("this");
+                    if (localThis == nullptr) {
+                        diag.fatalError("scope is owned by a class, but no 'this' local exists");
+                    }
+
+                    bool view = localThis->type->isViewType();
+
+                    if (!view) {
+                        candidateFunctions = scopeOwner->getCandidateMethods(var->getName());
+                    }
+
+                    auto candidates = scopeOwner->getCandidateMethods(std::string(var->getName()) + ".v");
+                    candidateFunctions.insert(candidateFunctions.end(), candidates.begin(), candidates.end());
 
                     errorName = scopeOwner->name;
                     errorName += "::" + var->getName();
@@ -126,7 +138,14 @@ namespace parser {
                 ClassType* classType = memberAccess->mClassType;
                 symbol::ClassSymbol* classSymbol = mScope->findClass({ std::string(classType->getModuleName()), std::string(classType->getName()) });
 
-                candidateFunctions = classSymbol->getCandidateMethods(memberAccess->getId());
+                bool view = memberAccess->mClass->getType()->isViewType();
+
+                if (!view) {
+                    candidateFunctions = classSymbol->getCandidateMethods(memberAccess->getId());
+                }
+
+                auto candidates = classSymbol->getCandidateMethods(std::string(memberAccess->getId()) + ".v");
+                candidateFunctions.insert(candidateFunctions.end(), candidates.begin(), candidates.end());
 
                 errorName = classType->getName();
                 errorName += "::" + memberAccess->mId;

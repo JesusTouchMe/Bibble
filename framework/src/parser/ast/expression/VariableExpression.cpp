@@ -2,6 +2,8 @@
 
 #include "Bibble/parser/ast/expression/VariableExpression.h"
 
+#include "Bibble/type/ViewType.h"
+
 #include <format>
 
 namespace parser {
@@ -56,13 +58,34 @@ namespace parser {
         symbol::ClassSymbol* scopeOwner = mScope->findOwner();
 
         if (scopeOwner != nullptr && !isQualified() && mScope->findLocal(mNames.back()) == nullptr) {
+            symbol::LocalSymbol* localThis = mScope->findLocal("this");
+            if (localThis == nullptr) {
+                diag.fatalError("scope is owned by a class, but no 'this' local exists");
+            }
+
+            bool view = localThis->type->isViewType();
+
             auto field = scopeOwner->getField(mNames.back());
             if (field != nullptr) {
-                mType = field->type;
+                if (field->type->isReferenceType() && view) {
+                    mType = ViewType::Create(field->type);
+                } else {
+                    mType = field->type;
+                }
+
                 mIsImplicitThis = true;
                 return;
             } else {
-                auto method = scopeOwner->getMethod(mNames.back());
+                if (!view) {
+                    auto method = scopeOwner->getMethod(mNames.back());
+                    if (method != nullptr) {
+                        mType = method->type->getReturnType();
+                        mIsImplicitThis = true;
+                        return;
+                    }
+                }
+
+                auto method = scopeOwner->getMethod(mNames.back() + ".v");
                 if (method != nullptr) {
                     mType = method->type->getReturnType();
                     mIsImplicitThis = true;

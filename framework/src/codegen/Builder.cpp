@@ -5,8 +5,10 @@
 #include "Bibble/type/ArrayType.h"
 #include "Bibble/type/ClassType.h"
 #include "Bibble/type/IntegerType.h"
+#include "Bibble/type/ViewType.h"
 
 #include <ranges>
+
 
 namespace codegen {
     Builder::Builder(Context& ctx)
@@ -204,9 +206,14 @@ namespace codegen {
     }
 
     void Builder::createArrayLoad(::Type* _arrayType) {
-        assert(_arrayType->isArrayType());
+        assert(_arrayType->isArrayView());
 
-        auto* arrayType = static_cast<ArrayType*>(_arrayType);
+        ArrayType* arrayType;
+        if (_arrayType->isViewType()) {
+            arrayType = static_cast<ArrayType*>(static_cast<ViewType*>(_arrayType)->getBaseType());
+        } else {
+            arrayType = static_cast<ArrayType*>(_arrayType);
+        }
 
         auto index = mContext.pop();
         auto arrayRef = mContext.pop();
