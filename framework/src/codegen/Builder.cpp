@@ -300,7 +300,7 @@ namespace codegen {
     }
 
     void Builder::createArrayLength(::Type* arrayType) {
-        assert(arrayType->isArrayType());
+        assert(arrayType->isArrayView());
 
         auto arrayRef = mContext.pop();
         assert(arrayRef.type == Type::Category2_Reference);
@@ -609,6 +609,8 @@ namespace codegen {
             } else {
                 assert(false && "bad type");
             }
+        } else if (rtFrom == Type::Category2_Reference && to->getRuntimeType() == Type::Category2_Reference) {
+            mContext.emplace(Type::Category2_Reference); // TODO: allow casting up (object to string for example) with runtime check
         } else {
             assert(false && "bad type");
         }
@@ -623,6 +625,23 @@ namespace codegen {
         insert<CallInsnNode>(Opcodes::CALL, moduleName, name, type->getJesusASMType()->getDescriptor());
         if (!type->getReturnType()->isVoidType()) {
             mContext.emplace(type->getReturnType()->getRuntimeType());
+        }
+    }
+
+    void Builder::createVirtualCall(ClassType* ownerClass, std::string_view name, FunctionType* type) {
+        for (auto* argument : std::ranges::reverse_view(type->getArgumentTypes())) {
+            auto rtArgument = mContext.pop();
+            assert(rtArgument.type == argument->getRuntimeType());
+        }
+
+        std::vector<::Type*> argTypes = type->getArgumentTypes();
+        argTypes.erase(argTypes.begin());
+        FunctionType* methodType = FunctionType::Create(type->getReturnType(), std::move(argTypes));
+
+        insert<MethodInsnNode>(Opcodes::CALLVIRTUAL, std::string(ownerClass->getModuleName()), std::string(ownerClass->getName()),
+            std::string(name), std::string(methodType->getJesusASMType()->getDescriptor()));
+        if (!methodType->getReturnType()->isVoidType()) {
+            mContext.emplace(methodType->getReturnType()->getRuntimeType());
         }
     }
 

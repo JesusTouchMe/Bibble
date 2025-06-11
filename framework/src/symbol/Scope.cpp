@@ -45,26 +45,26 @@ namespace symbol {
         else return nullptr;
     }
 
-    std::vector<FunctionSymbol*> ClassSymbol::getCandidateMethods(std::string_view name) {
-        std::vector<FunctionSymbol*> candidates;
+    std::vector<ClassSymbol::Method*> ClassSymbol::getCandidateMethods(std::string_view name) {
+        std::vector<Method*> candidates;
         std::unordered_set<Signature> seen;
         getCandidateMethods(candidates, seen, name);
         return candidates;
     }
 
-    bool ClassSymbol::getCandidateMethods(std::vector<FunctionSymbol*>& candidates, std::unordered_set<Signature>& seen, std::string_view name) {
+    bool ClassSymbol::getCandidateMethods(std::vector<Method*>& candidates, std::unordered_set<Signature>& seen, std::string_view name) {
         bool found = false;
 
         auto GetSignature = [](const Method& method) -> Signature {
             return Signature(method.name, method.type);
         };
 
-        for (const auto& method : methods) {
+        for (auto& method : methods) {
             if (method.name == name) {
                 Signature signature = GetSignature(method);
                 if (!seen.contains(signature)) {
                     seen.insert(signature);
-                    candidates.push_back(method.function);
+                    candidates.push_back(&method);
                     found = true;
                 }
             }

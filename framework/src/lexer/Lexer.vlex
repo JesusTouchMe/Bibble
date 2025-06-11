@@ -40,6 +40,7 @@ tokens {
     native
     public
     private
+    virtual
 
     if
     else

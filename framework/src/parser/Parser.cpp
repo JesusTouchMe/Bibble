@@ -538,10 +538,9 @@ namespace parser {
             expectToken(lexer::TokenType::LeftParen);
             consume();
 
-            bool native = false;
-            std::vector<FunctionModifier> modifiers;
+            std::vector<MethodModifier> modifiers;
             for (auto& modifierToken : modifierTokens) {
-                auto modifier = GetFunctionModifier(modifierToken, mDiag);
+                auto modifier = GetMethodModifier(modifierToken, mDiag);
                 if (std::find(modifiers.begin(), modifiers.end(), modifier) != modifiers.end()) {
                     mDiag.compilerError(modifierToken.getStartLocation(),
                                         modifierToken.getEndLocation(),
@@ -550,13 +549,14 @@ namespace parser {
                     std::exit(1);
                 }
 
-                if (modifier == FunctionModifier::Native) native = true;
+                //if (modifier == FunctionModifier::Native) native = true;
                 modifiers.push_back(modifier);
             }
 
-            if (std::find(modifiers.begin(), modifiers.end(), FunctionModifier::Public) == modifiers.end() &&
-                std::find(modifiers.begin(), modifiers.end(), FunctionModifier::Private) == modifiers.end()) {
-                modifiers.push_back(FunctionModifier::Public);
+            if (std::find(modifiers.begin(), modifiers.end(), MethodModifier::Public) == modifiers.end() &&
+                std::find(modifiers.begin(), modifiers.end(), MethodModifier::Private) == modifiers.end() &&
+                std::find(modifiers.begin(), modifiers.end(), MethodModifier::Protected) == modifiers.end()) {
+                modifiers.push_back(MethodModifier::Public);
             }
 
             std::vector<FunctionArgument> arguments;
@@ -584,21 +584,6 @@ namespace parser {
             scope->currentVariableIndex = 0;
             mScope = scope.get();
 
-            if (native) {
-                expectToken(lexer::TokenType::Semicolon);
-                consume();
-                mScope = scope->parent;
-
-                mDiag.compilerWarning("native-special",
-                                      token.getStartLocation(),
-                                      token.getEndLocation(),
-                                      std::format("constructor '{}{}{}' marked native",
-                                                  fmt::bold, className, fmt::defaults));
-
-                constructors.emplace_back(std::move(modifiers), "#Init", functionType, std::move(arguments), std::vector<ASTNodePtr>(), std::move(scope), std::move(token), false, false);
-                return;
-            }
-
             expectToken(lexer::TokenType::LeftBrace);
             consume();
 
@@ -612,7 +597,7 @@ namespace parser {
 
             mScope = scope->parent;
 
-            constructors.emplace_back(std::move(modifiers), "#Init", functionType, std::move(arguments), std::move(body), std::move(scope), std::move(token), false, false);
+            constructors.emplace_back(std::move(modifiers), "#Init", functionType, std::move(arguments), std::move(body), std::move(scope), std::move(token), false, false, false);
             return;
         }
 
@@ -623,10 +608,9 @@ namespace parser {
         if (current().getTokenType() == lexer::TokenType::LeftParen) { // method
             consume();
 
-            bool native = false;
-            std::vector<FunctionModifier> modifiers;
+            std::vector<MethodModifier> modifiers;
             for (auto& modifierToken : modifierTokens) {
-                auto modifier = GetFunctionModifier(modifierToken, mDiag);
+                auto modifier = GetMethodModifier(modifierToken, mDiag);
                 if (std::find(modifiers.begin(), modifiers.end(), modifier) != modifiers.end()) {
                     mDiag.compilerError(modifierToken.getStartLocation(),
                                         modifierToken.getEndLocation(),
@@ -635,13 +619,13 @@ namespace parser {
                     std::exit(1);
                 }
 
-                if (modifier == FunctionModifier::Native) native = true;
                 modifiers.push_back(modifier);
             }
 
-            if (std::find(modifiers.begin(), modifiers.end(), FunctionModifier::Public) == modifiers.end() &&
-                std::find(modifiers.begin(), modifiers.end(), FunctionModifier::Private) == modifiers.end()) {
-                modifiers.push_back(FunctionModifier::Public);
+            if (std::find(modifiers.begin(), modifiers.end(), MethodModifier::Public) == modifiers.end() &&
+                std::find(modifiers.begin(), modifiers.end(), MethodModifier::Private) == modifiers.end() &&
+                std::find(modifiers.begin(), modifiers.end(), MethodModifier::Protected) == modifiers.end()) {
+                modifiers.push_back(MethodModifier::Public);
             }
 
             std::vector<FunctionArgument> arguments;
@@ -686,15 +670,6 @@ namespace parser {
             scope->currentVariableIndex = 0;
             mScope = scope.get();
 
-            if (native) {
-                expectToken(lexer::TokenType::Semicolon);
-                consume();
-                mScope = scope->parent;
-
-                methods.emplace_back(std::move(modifiers), std::move(name), functionType, std::move(arguments), std::vector<ASTNodePtr>(), std::move(scope), std::move(token), overrides, view);
-                return;
-            }
-
             expectToken(lexer::TokenType::LeftBrace);
             consume();
 
@@ -707,7 +682,7 @@ namespace parser {
             consume();
 
             mScope = scope->parent;
-            methods.emplace_back(std::move(modifiers), std::move(name), functionType, std::move(arguments), std::move(body), std::move(scope), std::move(token), overrides, view);
+            methods.emplace_back(std::move(modifiers), std::move(name), functionType, std::move(arguments), std::move(body), std::move(scope), std::move(token), overrides, view, std::find(modifiers.begin(), modifiers.end(), MethodModifier::Virtual) != modifiers.end());
         } else { // field
             std::vector<FieldModifier> modifiers;
             for (auto& modifierToken : modifierTokens) {
@@ -973,6 +948,7 @@ namespace parser {
                 lexer::TokenType::NativeKeyword,
                 lexer::TokenType::PublicKeyword,
                 lexer::TokenType::PrivateKeyword,
+                lexer::TokenType::VirtualKeyword,
         };
 
         return std::find(modifiers.begin(), modifiers.end(), token.getTokenType()) != modifiers.end();
@@ -1007,6 +983,24 @@ namespace parser {
                                    std::format("invalid field modifier: '{}{}{}'",
                                                fmt::bold, token.getText(), fmt::defaults));
                 std::exit(1);
+        }
+    }
+
+    MethodModifier GetMethodModifier(const lexer::Token& token, diagnostic::Diagnostics& diag) {
+        switch (token.getTokenType()) {
+            case lexer::TokenType::PublicKeyword:
+                return MethodModifier::Public;
+            case lexer::TokenType::PrivateKeyword:
+                return MethodModifier::Private;
+            case lexer::TokenType::VirtualKeyword:
+                return MethodModifier::Virtual;
+
+            default:
+                diag.compilerError(token.getStartLocation(),
+                                   token.getEndLocation(),
+                                   std::format("invalid field modifier: '{}{}{}'",
+                                               fmt::bold, token.getText(), fmt::defaults));
+            std::exit(1);
         }
     }
 

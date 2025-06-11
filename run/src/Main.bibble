@@ -4,10 +4,5 @@ import std.Primitives;
 import vm.System;
 
 void main() {
-    System::loadPlugin("Plugin");
-
-    string str = "hello world";
-    var chars = str.getChars();
-
-    IO::print(chars[0]);
+    IO::print("hey".length());
 }

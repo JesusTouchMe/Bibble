@@ -1,5 +1,5 @@
 class Object {
-    int hashcode() {
+    virtual int hashcode() {
         return 123;
     }
 }
@@ -15,7 +15,11 @@ class String {
         return 1;
     }
 
-    view<char[]> getChars() view {
+    view<char[]> data() view {
         return data;
+    }
+
+    int length() view {
+        return data.length;
     }
 }

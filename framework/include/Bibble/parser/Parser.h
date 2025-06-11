@@ -112,6 +112,7 @@ namespace parser {
 
     ClassModifier GetClassModifier(const lexer::Token& token, diagnostic::Diagnostics& diag);
     FieldModifier GetFieldModifier(const lexer::Token& token, diagnostic::Diagnostics& diag);
+    MethodModifier GetMethodModifier(const lexer::Token& token, diagnostic::Diagnostics& diag);
     FunctionModifier GetFunctionModifier(const lexer::Token& token, diagnostic::Diagnostics& diag);
 }
 

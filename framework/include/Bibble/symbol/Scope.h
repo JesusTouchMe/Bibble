@@ -85,6 +85,8 @@ namespace symbol {
             FunctionType* type;
 
             FunctionSymbol* function;
+
+            bool isVirtual;
         };
 
         ClassSymbol() = default;
@@ -95,8 +97,8 @@ namespace symbol {
         Field* getField(std::string_view name);
         Method* getMethod(std::string_view name, FunctionType* type = nullptr);
 
-        std::vector<FunctionSymbol*> getCandidateMethods(std::string_view name);
-        bool getCandidateMethods(std::vector<FunctionSymbol*>& candidates, std::unordered_set<Signature>& seen, std::string_view name);
+        std::vector<Method*> getCandidateMethods(std::string_view name);
+        bool getCandidateMethods(std::vector<Method*>& candidates, std::unordered_set<Signature>& seen, std::string_view name);
 
         bool isPublic;
         std::string moduleName;

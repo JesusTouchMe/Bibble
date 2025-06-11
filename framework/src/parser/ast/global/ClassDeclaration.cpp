@@ -11,8 +11,8 @@ namespace parser {
         , type(type)
         , name(std::move(name)) {}
 
-    ClassMethod::ClassMethod(std::vector<FunctionModifier> modifiers, std::string name, FunctionType* type, std::vector<FunctionArgument> arguments,
-                             std::vector<ASTNodePtr> body, symbol::ScopePtr scope, lexer::Token errorToken, bool overrides, bool viewSafe)
+    ClassMethod::ClassMethod(std::vector<MethodModifier> modifiers, std::string name, FunctionType* type, std::vector<FunctionArgument> arguments,
+                             std::vector<ASTNodePtr> body, symbol::ScopePtr scope, lexer::Token errorToken, bool overrides, bool viewSafe, bool isVirtual)
         : modifiers(std::move(modifiers))
         , name(std::move(name))
         , type(type)
@@ -21,7 +21,8 @@ namespace parser {
         , scope(std::move(scope))
         , errorToken(std::move(errorToken))
         , overrides(overrides)
-        , viewSafe(viewSafe) {}
+        , viewSafe(viewSafe)
+        , isVirtual(isVirtual) {}
 
     ClassDeclaration::ClassDeclaration(std::vector<ClassModifier> modifiers, std::string name,
                                        std::vector<ClassField> fields, std::vector<ClassMethod> constructors, std::vector<ClassMethod> methods,
@@ -54,10 +55,10 @@ namespace parser {
         }
 
         if (mConstructors.empty()) {
-            mConstructors.emplace_back(std::vector<FunctionModifier>(), "#Init", FunctionType::Create(Type::Get("void"), {}),
+            mConstructors.emplace_back(std::vector<MethodModifier>(), "#Init", FunctionType::Create(Type::Get("void"), {}),
                                        std::vector<FunctionArgument>(), std::vector<ASTNodePtr>(),
                                        std::make_unique<symbol::Scope>(mOwnScope.get(), "", false, Type::Get("void")),
-                                       lexer::Token(), false, false);
+                                       lexer::Token(), false, false, false);
             mConstructors.back().scope->currentVariableIndex = 0;
         }
 
@@ -85,7 +86,7 @@ namespace parser {
                 *index += argument.type->getStackSlots();
             }
 
-            constructorSymbols.push_back({ methodModifiers, method.name, mName + "::" + method.name, languageType, method.type, functionSymbol });
+            constructorSymbols.push_back({ methodModifiers, method.name, mName + "::" + method.name, languageType, method.type, functionSymbol, false });
         }
 
         for (auto& method : mMethods) {
@@ -94,25 +95,27 @@ namespace parser {
                 methodModifiers |= static_cast<u16>(modifier);
             }
 
-            if (method.overrides) {
-                if (baseClass == nullptr) {
-                    //TODO: error
-                    int a = 5;
-                }
+            symbol::ClassSymbol::Method* foundMethod = nullptr;
 
+            if (baseClass != nullptr) {
                 symbol::ClassSymbol* current = baseClass;
-                symbol::ClassSymbol::Method* foundMethod = nullptr;
                 while (current != nullptr) {
                     foundMethod = current->getMethod(method.name, method.type);
                     if (foundMethod != nullptr) break;
 
                     current = current->baseClass;
                 }
+            }
 
+            if (method.overrides) {
                 if (foundMethod == nullptr) {
                     //TODO: error
                     int a = 5;
                 }
+            }
+
+            if (!method.isVirtual && foundMethod != nullptr) {
+                method.isVirtual = foundMethod->isVirtual;
             }
 
             auto languageType = method.type;
@@ -137,7 +140,7 @@ namespace parser {
                 *index += argument.type->getStackSlots();
             }
 
-            methodSymbols.push_back({ methodModifiers, method.name, mName + "::" + method.name, languageType, method.type, functionSymbol });
+            methodSymbols.push_back({ methodModifiers, method.name, mName + "::" + method.name, languageType, method.type, functionSymbol, method.isVirtual });
         }
 
         bool isPublic = false;
@@ -227,6 +230,16 @@ namespace parser {
 
             if (auto type = static_cast<FunctionType*>(method.type); type->getReturnType()->isVoidType()) {
                 builder.createReturn(type->getReturnType());
+            }
+
+            if (method.isVirtual) {
+                std::vector<::Type*> argTypes = method.type->getArgumentTypes();
+                argTypes.erase(argTypes.begin());
+                FunctionType* methodType = FunctionType::Create(method.type->getReturnType(), std::move(argTypes));
+
+                classNode->methods.push_back(std::make_unique <JesusASM::tree::MethodNode>(
+                    methodModifiers, method.name, std::string(methodType->getJesusASMType()->getDescriptor()),
+                    JesusASM::tree::FunctionSymbol{ mScope->findModuleScope()->name, function->name, function->descriptor }));
             }
         }
     }

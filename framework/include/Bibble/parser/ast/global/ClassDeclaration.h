@@ -24,6 +24,14 @@ namespace parser {
         Volatile = MODULEWEB_FIELD_MODIFIER_VOLATILE,
     };
 
+    enum class MethodModifier : u16 {
+        Public = MODULEWEB_METHOD_MODIFIER_PUBLIC,
+        Private = MODULEWEB_METHOD_MODIFIER_PRIVATE,
+        Protected = MODULEWEB_METHOD_MODIFIER_PROTECTED,
+        Virtual = 0, // not a moduleweb equivalent
+        Final = MODULEWEB_METHOD_MODIFIER_FINAL,
+    };
+
     struct ClassField {
         ClassField(std::vector<FieldModifier> modifiers, Type* type, std::string name);
 
@@ -32,11 +40,10 @@ namespace parser {
         std::string name;
     };
 
-    // TODO: implement virtual methods everywhere
     struct ClassMethod {
-        ClassMethod(std::vector<FunctionModifier> modifiers, std::string name, FunctionType* type, std::vector<FunctionArgument> arguments, std::vector<ASTNodePtr> body, symbol::ScopePtr scope, lexer::Token errorToken, bool overrides, bool viewSafe);
+        ClassMethod(std::vector<MethodModifier> modifiers, std::string name, FunctionType* type, std::vector<FunctionArgument> arguments, std::vector<ASTNodePtr> body, symbol::ScopePtr scope, lexer::Token errorToken, bool overrides, bool viewSafe, bool isVirtual);
 
-        std::vector<FunctionModifier> modifiers; // TODO: method modifiers
+        std::vector<MethodModifier> modifiers;
         std::string name;
         FunctionType* type;
         std::vector<FunctionArgument> arguments;
@@ -44,6 +51,7 @@ namespace parser {
         symbol::ScopePtr scope;
         lexer::Token errorToken;
 
+        bool isVirtual;
         bool overrides;
         bool viewSafe;
     };

@@ -36,7 +36,7 @@ namespace parser {
 
         mClass->codegen(builder, ctx, diag, false);
 
-        if (mClass->getType()->isArrayType()) {
+        if (mClass->getType()->isArrayView()) {
             builder.createArrayLength(mClass->getType());
         } else {
             auto field = mClassSymbol->getField(mId);
@@ -48,11 +48,13 @@ namespace parser {
     void MemberAccess::semanticCheck(diagnostic::Diagnostics& diag, bool& exit, bool statement) {
         mClass->semanticCheck(diag, exit, statement);
 
-        if (mClass->getType()->isArrayType()) {
+        if (mClass->getType()->isArrayView()) {
             return;
         }
 
         auto field = mClassSymbol->getField(mId);
+        auto method = mClassSymbol->getMethod(mId);
+        auto viewMethod = mClassSymbol->getMethod(mId + ".v");
         auto scopeOwner = mScope->findOwner();
         ClassType* classType = nullptr;
 
@@ -60,7 +62,7 @@ namespace parser {
             classType = scopeOwner->getType();
         }
 
-        if (field != nullptr && (field->modifiers & MODULEWEB_FIELD_MODIFIER_PRIVATE) && mClassType != classType) {
+        if (field != nullptr && (field->modifiers & MODULEWEB_FIELD_MODIFIER_PRIVATE) && mClassType != classType && method == nullptr && viewMethod == nullptr) {
             diag.compilerError(mErrorToken.getStartLocation(),
                                mErrorToken.getEndLocation(),
                                std::format("'{}{}{}' is a private member of class '{}{}{}'",
@@ -69,8 +71,16 @@ namespace parser {
             exit = true;
         }
 
-        auto method = mClassSymbol->getMethod(mId);
         if (method != nullptr && (method->modifiers & MODULEWEB_FUNCTION_MODIFIER_PRIVATE) && mClassType != classType) {
+            diag.compilerError(mErrorToken.getStartLocation(),
+                               mErrorToken.getEndLocation(),
+                               std::format("'{}{}{}' is a private member of class '{}{}{}'",
+                                           fmt::bold, mId, fmt::defaults,
+                                           fmt::bold, mClassType->getName(), fmt::defaults));
+            exit = true;
+        }
+
+        if (viewMethod != nullptr && (viewMethod->modifiers & MODULEWEB_FUNCTION_MODIFIER_PRIVATE) && mClassType != classType) {
             diag.compilerError(mErrorToken.getStartLocation(),
                                mErrorToken.getEndLocation(),
                                std::format("'{}{}{}' is a private member of class '{}{}{}'",
@@ -90,7 +100,7 @@ namespace parser {
     void MemberAccess::typeCheck(diagnostic::Diagnostics& diag, bool& exit) {
         mClass->typeCheck(diag, exit);
 
-        if (mClass->getType()->isArrayType() && mId == "length") {
+        if (mClass->getType()->isArrayView() && mId == "length") {
             mType = Type::Get("int");
             return;
         }

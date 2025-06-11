@@ -4,15 +4,57 @@
 #include "Bibble/parser/ast/expression/MemberAccess.h"
 #include "Bibble/parser/ast/expression/VariableExpression.h"
 
+#include "Bibble/type/ViewType.h"
+
 #include <algorithm>
 #include <format>
 
 namespace parser {
+    template<class... Ts>
+    struct overloaded : Ts... { using Ts::operator()...; };
+    template<class... Ts>
+    overloaded(Ts...) -> overloaded<Ts...>;
+
+    constexpr bool operator==(const CallExpression::FunctionOrMethod& func, std::nullptr_t) {
+        return std::holds_alternative<std::monostate>(func);
+    }
+
+    constexpr std::string_view GetModuleName(const CallExpression::FunctionOrMethod& func) {
+        return std::visit(overloaded{
+            [](const std::monostate&) -> std::string_view { return "<error>"; },
+            [](const symbol::FunctionSymbol* f) -> std::string_view { return f->moduleName; },
+            [](const symbol::ClassSymbol::Method* m) -> std::string_view { return m->function->moduleName; }
+        }, func);
+    }
+
+    constexpr std::string_view GetName(const CallExpression::FunctionOrMethod& func) {
+        return std::visit(overloaded{
+        [](const std::monostate&) -> std::string_view { return "<error>"; },
+        [](const symbol::FunctionSymbol* f) -> std::string_view { return f->name; },
+        [](const symbol::ClassSymbol::Method* m) -> std::string_view { return m->name; }
+        }, func);
+    }
+
+    constexpr u16 GetModifiers(const CallExpression::FunctionOrMethod& func) {
+        return std::visit(overloaded{
+            [](const std::monostate&) -> u16 { return 0; },
+            [](const symbol::FunctionSymbol* f) { return f->modifiers; },
+            [](const symbol::ClassSymbol::Method* m) { return m->modifiers; }
+        }, func);
+    }
+
+    constexpr FunctionType* GetType(const CallExpression::FunctionOrMethod& func) {
+        return std::visit(overloaded{
+            [](const std::monostate&) -> FunctionType* { return nullptr; },
+            [](const symbol::FunctionSymbol* f) { return f->type; },
+            [](const symbol::ClassSymbol::Method* m) { return m->type; }
+        }, func);
+    }
+
     CallExpression::CallExpression(symbol::Scope* scope, ASTNodePtr callee, std::vector<ASTNodePtr> parameters)
         : ASTNode(scope, callee->getErrorToken())
         , mCallee(std::move(callee))
         , mParameters(std::move(parameters))
-        , mBestViableFunction(nullptr)
         , mIsMemberFunction(false) {}
 
     void CallExpression::codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag, bool statement) {
@@ -23,13 +65,23 @@ namespace parser {
             std::exit(1);
         }
 
+        ClassType* classType = nullptr;
+
         if (mIsMemberFunction) {
             if (auto var = dynamic_cast<VariableExpression*>(mCallee.get())) {
                 symbol::LocalSymbol* self = mScope->findLocal("this");
                 builder.createLoad(self->type, self->index);
+
+                if (self->type->isViewType()) {
+                    classType = static_cast<ClassType*>(static_cast<ViewType*>(self->type)->getBaseType());
+                } else {
+                    classType = static_cast<ClassType*>(self->type);
+                }
             } else {
                 auto member = static_cast<MemberAccess*>(mCallee.get());
                 member->mClass->codegen(builder, ctx, diag, false);
+
+                classType = member->mClassType;
             }
         }
 
@@ -37,7 +89,21 @@ namespace parser {
             parameter->codegen(builder, ctx, diag, false);
         }
 
-        builder.createCall(mBestViableFunction->moduleName, mBestViableFunction->name, mBestViableFunction->type);
+        //builder.createCall(mBestViableFunction->moduleName, mBestViableFunction->name, mBestViableFunction->type);
+
+        std::visit(overloaded{
+            [](const std::monostate&) { },
+            [&builder](const symbol::FunctionSymbol* f) {
+                builder.createCall(f->moduleName, f->name, f->type);
+            },
+            [&builder, classType](const symbol::ClassSymbol::Method* m) {
+                if (m->isVirtual) {
+                    builder.createVirtualCall(classType, m->name, m->type);
+                } else {
+                    builder.createCall(m->function->moduleName, m->function->name, m->function->type);
+                }
+            }
+        }, mBestViableFunction);
 
         if (statement && !mType->isVoidType()) {
             builder.createPop(mType);
@@ -50,7 +116,7 @@ namespace parser {
             parameter->semanticCheck(diag, exit, false);
         }
 
-        if (statement && (mBestViableFunction->modifiers & MODULEWEB_FUNCTION_MODIFIER_PURE)) {
+        if (statement && (GetModifiers(mBestViableFunction) & MODULEWEB_FUNCTION_MODIFIER_PURE)) {
             mType = Type::Get("void");
             diag.compilerWarning("unused-value",
                                  mErrorToken.getStartLocation(),
@@ -70,7 +136,7 @@ namespace parser {
         if (mBestViableFunction == nullptr) {
             exit = true;
         } else {
-            auto functionType = mBestViableFunction->type;
+            auto functionType = GetType(mBestViableFunction);
             mType = functionType->getReturnType();
             u16 index = mIsMemberFunction ? 1 : 0;
             for (auto& parameter : mParameters) {
@@ -82,7 +148,7 @@ namespace parser {
                         diag.compilerError(mErrorToken.getStartLocation(),
                                            mErrorToken.getEndLocation(),
                                            std::format("no matching function for call to '{}{}::{}(){}'",
-                                                       fmt::bold, mBestViableFunction->moduleName, mBestViableFunction->name, fmt::defaults));
+                                                       fmt::bold, GetModuleName(mBestViableFunction), GetName(mBestViableFunction), fmt::defaults));
 
                         exit = true;
                     }
@@ -96,15 +162,15 @@ namespace parser {
     }
 
     struct ViableFunction {
-        symbol::FunctionSymbol* symbol;
+        CallExpression::FunctionOrMethod symbol;
         int score;
         bool disallowed;
     };
 
     // million social credits to solar mist for making this code before i stole it
-    symbol::FunctionSymbol* CallExpression::getBestViableFunction(diagnostic::Diagnostics& diag, bool& exit) {
+    CallExpression::FunctionOrMethod CallExpression::getBestViableFunction(diagnostic::Diagnostics& diag, bool& exit) {
         if (dynamic_cast<VariableExpression*>(mCallee.get()) || dynamic_cast<MemberAccess*>(mCallee.get())) {
-            std::vector<symbol::FunctionSymbol*> candidateFunctions;
+            std::vector<FunctionOrMethod> candidateFunctions;
             std::string errorName;
 
             if (auto var = dynamic_cast<VariableExpression*>(mCallee.get())) {
@@ -121,7 +187,8 @@ namespace parser {
                     bool view = localThis->type->isViewType();
 
                     if (!view) {
-                        candidateFunctions = scopeOwner->getCandidateMethods(var->getName());
+                        auto candidates = scopeOwner->getCandidateMethods(var->getName());
+                        candidateFunctions.insert(candidateFunctions.end(), candidates.begin(), candidates.end());
                     }
 
                     auto candidates = scopeOwner->getCandidateMethods(std::string(var->getName()) + ".v");
@@ -132,7 +199,8 @@ namespace parser {
 
                     mIsMemberFunction = true;
                 } else {
-                    candidateFunctions = mScope->getCandidateFunctions(var->getNames());
+                    auto candidates = mScope->getCandidateFunctions(var->getNames());
+                    candidateFunctions.insert(candidateFunctions.end(), candidates.begin(), candidates.end());
                 }
             } else if (auto memberAccess = dynamic_cast<MemberAccess*>(mCallee.get())) {
                 ClassType* classType = memberAccess->mClassType;
@@ -141,7 +209,8 @@ namespace parser {
                 bool view = memberAccess->mClass->getType()->isViewType();
 
                 if (!view) {
-                    candidateFunctions = classSymbol->getCandidateMethods(memberAccess->getId());
+                    auto candidates = classSymbol->getCandidateMethods(memberAccess->getId());
+                    candidateFunctions.insert(candidateFunctions.end(), candidates.begin(), candidates.end());
                 }
 
                 auto candidates = classSymbol->getCandidateMethods(std::string(memberAccess->getId()) + ".v");
@@ -155,7 +224,7 @@ namespace parser {
 
             for (auto it = candidateFunctions.begin(); it != candidateFunctions.end();) {
                 auto candidate = *it;
-                auto& arguments = candidate->type->getArgumentTypes();
+                auto& arguments = GetType(candidate)->getArgumentTypes();
 
                 if (mIsMemberFunction) {
                     if (arguments.size() != mParameters.size() + 1) {
@@ -170,16 +239,16 @@ namespace parser {
             }
 
             std::vector<ViableFunction> viableFunctions;
-            for (auto* candidate : candidateFunctions) {
+            for (auto& candidate : candidateFunctions) {
                 int score = 0;
                 bool disallowed = false;
                 size_t i = mIsMemberFunction ? 1 : 0;
 
                 for (; i < mParameters.size(); i++) {
-                    Type::CastLevel castLevel = mParameters[i]->getType()->castTo(candidate->type->getArgumentTypes()[i]);
+                    Type::CastLevel castLevel = mParameters[i]->getType()->castTo(GetType(candidate)->getArgumentTypes()[i]);
                     int multiplier = 0;
 
-                    if (mParameters[i]->getType() == candidate->type->getArgumentTypes()[i]) multiplier = 0;
+                    if (mParameters[i]->getType() == GetType(candidate)->getArgumentTypes()[i]) multiplier = 0;
                     else if (castLevel == Type::CastLevel::Implicit) multiplier = 1;
                     else if (castLevel == Type::CastLevel::ImplicitWarning) multiplier = 2;
                     else disallowed = true;
@@ -197,7 +266,7 @@ namespace parser {
                                    mErrorToken.getEndLocation(),
                                    std::format("no matching function for call to '{}{}(){}'",
                                                fmt::bold, errorName, fmt::defaults));
-                return nullptr;
+                return std::monostate{};
             }
 
             std::sort(viableFunctions.begin(), viableFunctions.end(), [](const auto& lhs, const auto& rhs) {
@@ -210,13 +279,13 @@ namespace parser {
                                        mErrorToken.getEndLocation(),
                                        std::format("call to '{}{}(){}' is ambiguous",
                                                    fmt::bold, errorName, fmt::defaults));
-                    return nullptr;
+                    return std::monostate{};
                 }
             }
 
             return viableFunctions.front().symbol;
         }
 
-        return nullptr;
+        return std::monostate{};
     }
 }

@@ -7,6 +7,7 @@
 
 #include "Bibble/diagnostic/Assert.h"
 
+#include "Bibble/type/ClassType.h"
 #include "Bibble/type/FunctionType.h"
 
 #include <JesusASM/tree/ModuleNode.h>
@@ -18,6 +19,7 @@
 #include <JesusASM/tree/instructions/IntInsnNode.h>
 #include <JesusASM/tree/instructions/JumpInsnNode.h>
 #include <JesusASM/tree/instructions/LdcInsnNode.h>
+#include <JesusASM/tree/instructions/MethodInsnNode.h>
 #include <JesusASM/tree/instructions/VarInsnNode.h>
 
 #include <JesusASM/type/Type.h>
@@ -100,6 +102,7 @@ namespace codegen {
         void createCast(::Type* from, ::Type* to); // bytecode cast (instruction). NOT a language type cast
 
         void createCall(std::string_view moduleName, std::string_view name, FunctionType* type);
+        void createVirtualCall(ClassType* ownerClass, std::string_view name, FunctionType* type);
 
         void createReturn(::Type* returnType);
 

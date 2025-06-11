@@ -5,9 +5,13 @@
 
 #include "Bibble/parser/ast/Node.h"
 
+#include <variant>
+
 namespace parser {
     class CallExpression : public ASTNode {
     public:
+        using FunctionOrMethod = std::variant<std::monostate, symbol::FunctionSymbol*, symbol::ClassSymbol::Method*>;
+
         CallExpression(symbol::Scope* scope, ASTNodePtr callee, std::vector<ASTNodePtr> parameters);
 
         void codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag, bool statement) override;
@@ -20,11 +24,11 @@ namespace parser {
     private:
         ASTNodePtr mCallee;
         std::vector<ASTNodePtr> mParameters;
-        symbol::FunctionSymbol* mBestViableFunction;
+        FunctionOrMethod mBestViableFunction;
 
         bool mIsMemberFunction;
 
-        symbol::FunctionSymbol* getBestViableFunction(diagnostic::Diagnostics& diag, bool& exit);
+        FunctionOrMethod getBestViableFunction(diagnostic::Diagnostics& diag, bool& exit);
     };
 
     using CallExpressionPtr = std::unique_ptr<CallExpression>;
