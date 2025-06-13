@@ -17,7 +17,6 @@ public:
     std::string_view getName() const;
     ClassType* getBaseType() const;
 
-    int getStackSlots() const override;
     JesusASM::Type* getJesusASMType() const override;
     codegen::Type getRuntimeType() const override;
 

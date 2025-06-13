@@ -1,0 +1,3 @@
+void copy(byte[] src, int srcPos, byte[] dest, int destPos, int count) {
+
+}

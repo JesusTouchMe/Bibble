@@ -10,6 +10,9 @@ namespace parser {
     public:
         enum class Operator {
             Negate,
+
+            Increment,
+            Decrement,
         };
 
         UnaryExpression(symbol::Scope* scope, ASTNodePtr operand, lexer::TokenType operatorToken, bool postfix, lexer::Token token);

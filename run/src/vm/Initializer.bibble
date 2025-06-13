@@ -1,0 +1,6 @@
+import vm.System;
+
+{
+    System::loadPlugin("Plugin");
+    return;
+}

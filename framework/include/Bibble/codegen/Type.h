@@ -5,12 +5,11 @@
 
 namespace codegen {
     enum class Type {
-        Category1_Primitive,
-        Category2_Primitive,
-        Category2_Handle,
-        Category2_Reference,
+        Primitive,
+        Handle,
+        Reference,
 
-        Compiler_CmpResult,
+        CmpResult,
     };
 }
 

@@ -12,7 +12,6 @@ public:
     Type* getReturnType() const;
     const std::vector<Type*>& getArgumentTypes() const;
 
-    int getStackSlots() const override;
     JesusASM::Type* getJesusASMType() const override;
     codegen::Type getRuntimeType() const override;
 

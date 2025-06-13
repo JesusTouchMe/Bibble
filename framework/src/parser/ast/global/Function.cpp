@@ -23,7 +23,7 @@ namespace parser {
 
         for (auto& argument : mArguments) {
             mOwnScope->locals.emplace(argument.name, symbol::LocalSymbol(*index, argument.type));
-            *index += argument.type->getStackSlots();
+            *index += 1;
         }
     }
 

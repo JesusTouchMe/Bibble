@@ -1,7 +1,5 @@
 native void exit(int code);
 
-native void loadPlugin(string name);
+native void trap(string message);
 
-{
-    loadPlugin("Plugin");
-}
+native void loadPlugin(string name);

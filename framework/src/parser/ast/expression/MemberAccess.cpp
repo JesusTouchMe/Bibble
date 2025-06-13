@@ -62,7 +62,7 @@ namespace parser {
             classType = scopeOwner->getType();
         }
 
-        if (field != nullptr && (field->modifiers & MODULEWEB_FIELD_MODIFIER_PRIVATE) && mClassType != classType && method == nullptr && viewMethod == nullptr) {
+        if (field != nullptr && (field->modifiers & MODULEWEB_FIELD_MODIFIER_PRIVATE || field->modifiers & MODULEWEB_FIELD_MODIFIER_PROTECTED) && mClassType != classType && method == nullptr && viewMethod == nullptr) {
             diag.compilerError(mErrorToken.getStartLocation(),
                                mErrorToken.getEndLocation(),
                                std::format("'{}{}{}' is a private member of class '{}{}{}'",
@@ -71,7 +71,7 @@ namespace parser {
             exit = true;
         }
 
-        if (method != nullptr && (method->modifiers & MODULEWEB_FUNCTION_MODIFIER_PRIVATE) && mClassType != classType) {
+        if (method != nullptr && (method->modifiers & MODULEWEB_METHOD_MODIFIER_PRIVATE || method->modifiers & MODULEWEB_METHOD_MODIFIER_PRIVATE) && mClassType != classType) {
             diag.compilerError(mErrorToken.getStartLocation(),
                                mErrorToken.getEndLocation(),
                                std::format("'{}{}{}' is a private member of class '{}{}{}'",
@@ -80,7 +80,7 @@ namespace parser {
             exit = true;
         }
 
-        if (viewMethod != nullptr && (viewMethod->modifiers & MODULEWEB_FUNCTION_MODIFIER_PRIVATE) && mClassType != classType) {
+        if (viewMethod != nullptr && (viewMethod->modifiers & MODULEWEB_METHOD_MODIFIER_PRIVATE) && mClassType != classType) {
             diag.compilerError(mErrorToken.getStartLocation(),
                                mErrorToken.getEndLocation(),
                                std::format("'{}{}{}' is a private member of class '{}{}{}'",

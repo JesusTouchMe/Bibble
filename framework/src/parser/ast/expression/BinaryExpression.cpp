@@ -161,10 +161,10 @@ namespace parser {
 
                         mRight->codegen(builder, ctx, diag, false);
 
+                        if (!statement) builder.createDupX1(mRight->getType());
+
                         auto field = scopeOwner->getField(variableExpression->getName());
                         builder.createSetField(scopeOwner->getType(), field->type, field->name);
-
-                        if (!statement) builder.createGetField(scopeOwner->getType(), field->type, field->name);
                     } else {
                         symbol::LocalSymbol* local = mScope->findLocal(variableExpression->getName());
                         if (local == nullptr) {
@@ -186,10 +186,10 @@ namespace parser {
 
                     mRight->codegen(builder, ctx, diag, false);
 
+                        if (!statement) builder.createDupX1(mRight->getType());
+
                     auto field = memberAccess->getClassSymbol()->getField(memberAccess->getId());
                     builder.createSetField(memberAccess->getClassType(), field->type, field->name);
-
-                    if (!statement) builder.createGetField(memberAccess->getClassType(), field->type, field->name);
                 } else if (auto binaryExpr = dynamic_cast<BinaryExpression*>(mLeft.get()); binaryExpr->mOperator == Operator::Index) {
                     ASTNode* array = binaryExpr->mLeft.get();
                     ASTNode* index = binaryExpr->mRight.get();
@@ -276,26 +276,12 @@ namespace parser {
             case Operator::LessEqual:
             case Operator::GreaterEqual:
                 if (mLeft->getType() != mRight->getType()) {
-                    if (mLeft->getType()->getStackSlots() > mRight->getType()->getStackSlots()) {
-                        if (mRight->implicitCast(diag, mLeft->getType())) {
-                            mRight = Cast(mRight, mLeft->getType());
-                        }
-
+                    if (mRight->implicitCast(diag, mLeft->getType())) {
+                        mRight = Cast(mRight, mLeft->getType());
                         mType = mLeft->getType();
-                    } else if (mRight->getType()->getStackSlots() > mLeft->getType()->getStackSlots()) {
-                        if (mLeft->implicitCast(diag, mRight->getType())) {
-                            mLeft = Cast(mLeft, mRight->getType());
-                        }
-
+                    } else if (mLeft->implicitCast(diag, mRight->getType())) {
+                        mLeft = Cast(mLeft, mRight->getType());
                         mType = mRight->getType();
-                    } else {
-                        if (mRight->implicitCast(diag, mLeft->getType())) {
-                            mRight = Cast(mRight, mLeft->getType());
-                            mType = mLeft->getType();
-                        } else if (mLeft->implicitCast(diag, mRight->getType())) {
-                            mLeft = Cast(mLeft, mRight->getType());
-                            mType = mRight->getType();
-                        }
                     }
                 }
 

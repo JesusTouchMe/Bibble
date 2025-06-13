@@ -55,7 +55,17 @@ namespace symbol {
 
         std::vector<lexer::Token> tokens = lexer.lex();
 
-        symbol::ScopePtr scope = std::make_unique<symbol::Scope>(nullptr, std::move(moduleName), true);
+        std::string shortModuleName;
+        auto pos = moduleName.find_last_of('/');
+
+        if (pos == std::string::npos) {
+            shortModuleName = moduleName;
+        } else {
+            shortModuleName = moduleName.substr(pos + 1);
+        }
+
+        ScopePtr scope = std::make_unique<Scope>(nullptr, std::move(moduleName), true);
+        scope->importedModuleNames[std::move(shortModuleName)] = scope->name;
         parser::Parser parser(tokens, diag, *this, scope.get());
 
         auto ast = parser.parse();

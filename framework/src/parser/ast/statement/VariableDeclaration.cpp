@@ -49,7 +49,7 @@ namespace parser {
         int* index = mScope->findVariableIndex();
         mScope->locals[mName] = symbol::LocalSymbol(*index, mType);
 
-        *index += mType->getStackSlots();
+        *index += 1;
 
         if (mType->isVoidType()) {
             diag.compilerError(mErrorToken.getStartLocation(),

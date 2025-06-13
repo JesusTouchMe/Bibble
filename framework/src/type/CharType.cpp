@@ -5,16 +5,12 @@
 CharType::CharType()
     : Type("char") {}
 
-int CharType::getStackSlots() const {
-    return 1;
-}
-
 JesusASM::Type* CharType::getJesusASMType() const {
     return JesusASM::Type::GetBuiltinType("char");
 }
 
 codegen::Type CharType::getRuntimeType() const {
-    return codegen::Type::Category1_Primitive;
+    return codegen::Type::Primitive;
 }
 
 Type::CastLevel CharType::castTo(Type* destType) const {

@@ -7,10 +7,6 @@
 VoidType::VoidType()
     : Type("void") {}
 
-int VoidType::getStackSlots() const {
-    return 0;
-}
-
 JesusASM::Type* VoidType::getJesusASMType() const {
     return JesusASM::Type::GetBuiltinType("void");
 }

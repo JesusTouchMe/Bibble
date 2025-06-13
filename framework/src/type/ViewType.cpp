@@ -14,10 +14,6 @@ Type* ViewType::getBaseType() const {
     return mBaseType;
 }
 
-int ViewType::getStackSlots() const {
-    return mBaseType->getStackSlots();
-}
-
 JesusASM::Type* ViewType::getJesusASMType() const {
     return mBaseType->getJesusASMType();
 }

@@ -27,11 +27,6 @@ const std::vector<Type*>& FunctionType::getArgumentTypes() const {
     return mArguments;
 }
 
-int FunctionType::getStackSlots() const {
-    return 2; // it's represented as a handle (eventually)
-              // we'll add a 'calldynamic' instruction that takes a function type descriptor as its arg and treats the function at the handle as such
-}
-
 JesusASM::Type* FunctionType::getJesusASMType() const {
     std::vector<JesusASM::Type*> arguments;
     arguments.reserve(mArguments.size());
@@ -44,7 +39,7 @@ JesusASM::Type* FunctionType::getJesusASMType() const {
 }
 
 codegen::Type FunctionType::getRuntimeType() const {
-    return codegen::Type::Category2_Handle;
+    return codegen::Type::Handle;
 }
 
 Type::CastLevel FunctionType::castTo(Type* destType) const {

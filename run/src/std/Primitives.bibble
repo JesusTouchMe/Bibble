@@ -22,4 +22,8 @@ class String {
     int length() view {
         return data.length;
     }
+
+    String concat(String other) view {
+        return null; // TODO: FOR LOOPS
+    }
 }

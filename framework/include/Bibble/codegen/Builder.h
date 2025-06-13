@@ -15,6 +15,7 @@
 #include <JesusASM/tree/instructions/CallInsnNode.h>
 #include <JesusASM/tree/instructions/ClassInsnNode.h>
 #include <JesusASM/tree/instructions/FieldInsnNode.h>
+#include "JesusASM/tree/instructions/IncInsnNode.h"
 #include <JesusASM/tree/instructions/InsnNode.h>
 #include <JesusASM/tree/instructions/IntInsnNode.h>
 #include <JesusASM/tree/instructions/JumpInsnNode.h>
@@ -68,7 +69,10 @@ namespace codegen {
         void createPop(::Type* type);
 
         void createDup(::Type* type);
+        void createDupX1(::Type* type);
         void createSwap(::Type* topType, ::Type* bottomType);
+
+        void createInc(::Type* type, u16 index, i16 increment);
 
         void createLoad(::Type* type, u16 index);
         void createStore(::Type* type, u16 index);
@@ -118,7 +122,7 @@ namespace codegen {
             return static_cast<T*>(mInsertPoint->getLast());
         }
 
-        template <JesusASM::Opcode Opcode, JesusASM::Opcode WOpcode, auto Operator>
+        template <JesusASM::Opcode Opcode, auto Operator>
         inline void binaryInsn(::Type* type) {
             auto rhs = mContext.pop();
             auto lhs = mContext.pop();
@@ -132,19 +136,16 @@ namespace codegen {
                 return;
             }
 
-            if (lhs.type == Type::Category1_Primitive) {
+            if (lhs.type == Type::Primitive) {
                 mContext.emplace(lhs.type);
                 insert<InsnNode>(Opcode);
-            } else if (lhs.type == Type::Category2_Primitive) {
-                mContext.emplace(lhs.type);
-                insert<InsnNode>(WOpcode);
             } else {
                 std::cerr << "bibble: unsupported type for binary instruction template: " << type->getName() << "\n";
                 std::exit(1);
             }
         }
 
-        template <JesusASM::Opcode Opcode, JesusASM::Opcode WOpcode, auto Operator>
+        template <JesusASM::Opcode Opcode, auto Operator>
         inline void unaryInsn(::Type* type) {
             auto operand = mContext.pop();
 
@@ -156,12 +157,9 @@ namespace codegen {
                 return;
             }
 
-            if (operand.type == Type::Category1_Primitive) {
+            if (operand.type == Type::Primitive) {
                 mContext.emplace(operand.type);
                 insert<InsnNode>(Opcode);
-            } else if (operand.type == Type::Category2_Primitive) {
-                mContext.emplace(operand.type);
-                insert<InsnNode>(WOpcode);
             } else {
                 std::cerr << "bibble: unsupported type for unary instruction template: " << type->getName() << "\n";
                 std::exit(1);
@@ -183,7 +181,7 @@ namespace codegen {
                 else if (lhs.value->value > rhs.value->value) createLdc(::Type::Get("int"), 1);
                 else createLdc(::Type::Get("int"), (i64) 0);
 
-                mContext.top().type = Type::Compiler_CmpResult;
+                mContext.top().type = Type::CmpResult;
                 mContext.top().cmpOperator = Op;
 
                 return;
@@ -192,16 +190,13 @@ namespace codegen {
             mContext.emplace(Op);
 
             switch (lhs.type) {
-                case Type::Category1_Primitive:
-                    insert<InsnNode>(Opcodes::ICMP);
+                case Type::Primitive:
+                    insert<InsnNode>(Opcodes::CMP);
                     break;
-                case Type::Category2_Primitive:
-                    insert<InsnNode>(Opcodes::LCMP);
-                    break;
-                case Type::Category2_Handle:
+                case Type::Handle:
                     insert<InsnNode>(Opcodes::HCMP);
                     break;
-                case Type::Category2_Reference:
+                case Type::Reference:
                     insert<InsnNode>(Opcodes::RCMP);
                     break;
                 default:

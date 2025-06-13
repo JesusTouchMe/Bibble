@@ -14,24 +14,12 @@ IntegerType::Size IntegerType::getSize() const {
     return mSize;
 }
 
-int IntegerType::getStackSlots() const {
-    if (mSize == Size::Long) {
-        return 2;
-    } else {
-        return 1;
-    }
-}
-
 JesusASM::Type* IntegerType::getJesusASMType() const {
     return JesusASM::Type::GetBuiltinType(mName);
 }
 
 codegen::Type IntegerType::getRuntimeType() const {
-    if (mSize == Size::Long) {
-        return codegen::Type::Category2_Primitive;
-    } else {
-        return codegen::Type::Category1_Primitive;
-    }
+    return codegen::Type::Primitive;
 }
 
 Type::CastLevel IntegerType::castTo(Type* destType) const {

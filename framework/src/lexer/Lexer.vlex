@@ -4,6 +4,9 @@ tokens {
     *
     /
 
+    ++
+    --
+
     =
     ==
     !=
@@ -37,9 +40,11 @@ tokens {
 
     new
 
+    abstract
     native
     public
     private
+    protected
     virtual
 
     if

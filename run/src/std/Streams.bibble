@@ -1,0 +1,198 @@
+import std.Arrays;
+import std.Math;
+import std.Trap;
+
+abstract class InStream {
+    virtual void close() {}
+
+    abstract byte read();
+
+    virtual int read(byte[] buffer) {
+        return read(buffer, 0, buffer.length);
+    }
+
+    virtual int read(byte[] buffer, int offset, int count) {
+        return 0;
+    }
+
+    abstract int available();
+
+    virtual int skip(int amount) {
+        return 0;
+    }
+}
+
+abstract class OutStream {
+    virtual void close() {}
+
+    virtual void flush() {}
+
+    abstract void write(byte b);
+
+    virtual void write(byte[] bytes) {
+        write(bytes, 0, bytes.length);
+    }
+
+    virtual void write(byte[] bytes, int offset, int count) {
+
+    }
+}
+
+class BufferedInStream extends InStream {
+    protected InStream in;
+    protected byte[] buffer;
+    protected int count;
+    protected int position;
+
+    BufferedInStream(InStream in, int bufferSize) {
+        if (in == null) Trap::nullReference("InStream");
+        if (bufferSize <= 0) Trap::illegalArgument("bufferSize <= 0");
+
+        this.in = in;
+        this.buffer = new byte[bufferSize];
+        this.count = 0;
+        this.position = 0;
+    }
+
+    private void fill() {
+        if (in == null) Trap::ioError("Stream closed");
+        count = in.read(buffer, 0, buffer.length);
+        position = 0;
+    }
+
+    void close() override {
+        var input = in;
+        if (input != null) {
+            in = null;
+            buffer = null;
+            input.close();
+        }
+    }
+
+    byte read() override {
+        if (pos >= count) {
+            fill();
+            if (count == -1) return -1;
+        }
+
+        return buffer[position++];
+    }
+
+    int read(byte[] buffer, int offset, int count) override {
+        if (buffer == null) Trap::nullReference();
+        if (offset < 0 || count < 0 || count > buffer.length - offset) Trap::outOfBounds();
+        if (count == 0) return 0;
+
+        int totalRead = 0;
+        //TODO: while loop
+        /*
+        while (count > 0) {
+            int available = this.count - position;
+            if (available <= 0) {
+                fill();
+                available = this.count;
+                if (available == -1) {
+                    if (totalRead == 0) return -1;
+                    else return totalRead;
+                }
+            }
+
+            int toCopy = Math::min(available, length);
+            Arrays::copy(this.buffer, position, buffer, offset, toCopy);
+
+            position += toCopy;
+            offset += toCopy;
+            length -= toCopy;
+            totalRead += toCopy;
+
+            if (in.available() == 0) break;
+        }
+        */
+
+        return totalRead;
+    }
+
+    int available() override {
+        if (in == null) Trap::ioError("Stream closed");
+        return (count - position) + in.available();
+    }
+
+    int skip(int amount) {
+        if (amount <= 0) return 0;
+
+        int available = count - position;
+        if (available <= 0) {
+            fill();
+            available = count;
+            if (available == -1) return 0;
+        }
+
+        int skipped = Math::min(available, amount);
+        position += skipped;
+        return skipped;
+    }
+}
+
+class BufferedOutStream extends OutStream {
+    protected OutStream out;
+    protected byte[] buffer;
+    protected int count;
+
+    BufferedOutStream(OutStream out, int bufferSize) {
+        if (out == null) Trap::nullReference("OutStream")
+        if (bufferSize <= 0) Trap::illegalArgument("bufferSize <= 0");
+
+        this.out = out;
+        this.buffer = new byte[bufferSize];
+        this.count = 0;
+    }
+
+    private void flushBuffer() {
+        if (count > 0) {
+            out.write(buffer, 0, count);
+            count = 0;
+        }
+    }
+
+    void close() override {
+        var output = out;
+        if (output != null) {
+            out = null;
+            buffer = null;
+            output.flush();
+            output.close();
+        }
+    }
+
+    void flush() override {
+        flushBuffer();
+        out.flush();
+    }
+
+    void write(byte b) override {
+        if (count >= buffer.length) {
+            flushBuffer();
+        }
+        buffer[count++] = b;
+    }
+
+    void write(byte[] buffer, int offset, int count) {
+        if (buffer == null) Trap::nullReference();
+        if (offset < 0 || count < 0 || count > buffer.length - offset) Trap::outOfBounds();
+
+        if (count == 0) return;
+
+        if (count >= this.buffer.length) {
+            flushBuffer();
+            out.write(buffer, offset, count);
+            return;
+        }
+
+        if (this.count + count > this.buffer.length) {
+            flushBuffer();
+        }
+
+        Arrays::copy(buffer, offset, this.buffer, this.count, count);
+        this.count += count;
+    }
+}

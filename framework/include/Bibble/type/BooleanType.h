@@ -9,7 +9,6 @@ class BooleanType : public Type {
 public:
     BooleanType();
 
-    int getStackSlots() const override;
     JesusASM::Type* getJesusASMType() const override;
     codegen::Type getRuntimeType() const override;
 

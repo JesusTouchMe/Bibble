@@ -42,7 +42,6 @@ public:
     Type(std::string_view name) : mName(name) {}
     virtual ~Type() = default;
 
-    virtual int getStackSlots() const = 0;
     virtual JesusASM::Type* getJesusASMType() const = 0;
     virtual codegen::Type getRuntimeType() const = 0;
 

@@ -1,0 +1,29 @@
+import std.Primitives;
+
+import vm.System;
+
+//TODO: inline when supported
+
+void nullReference() {
+    System::trap("Null reference");
+}
+
+void nullReference(string message) {
+    System::trap("Null reference: ".concat(message));
+}
+
+void illegalArgument(string message) {
+    System::trap("Illegal argument: ".concat(message));
+}
+
+void outOfBounds() {
+    System::trap("Index out of bounds");
+}
+
+void outOfBounds(string message) {
+    System::trap("Index out of bounds".concat(message));
+}
+
+void ioError(string message) {
+    System::trap("IO error: ".concat(message));
+}

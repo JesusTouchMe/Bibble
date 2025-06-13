@@ -29,6 +29,7 @@ namespace parser {
         Private = MODULEWEB_METHOD_MODIFIER_PRIVATE,
         Protected = MODULEWEB_METHOD_MODIFIER_PROTECTED,
         Virtual = 0, // not a moduleweb equivalent
+        Abstract = MODULEWEB_METHOD_MODIFIER_ABSTRACT,
         Final = MODULEWEB_METHOD_MODIFIER_FINAL,
     };
 

@@ -165,7 +165,7 @@ namespace symbol {
 
     std::vector<FunctionSymbol*> Scope::getCandidateFunctionsDown(std::vector<std::string> names) {
         std::vector<FunctionSymbol*> candidateFunctions;
-        auto activeNames = getNames();
+        std::vector<std::string> activeNames = getNames();
         std::erase(activeNames, "");
 
         if (std::equal(activeNames.begin(), activeNames.end(), names.begin(), names.end() - 1)) {

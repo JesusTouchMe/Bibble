@@ -21,6 +21,8 @@ namespace parser {
         std::vector<ASTNodePtr> mBody;
         symbol::ScopePtr mOwnScope;
     };
+
+    using InitBlockPtr = std::unique_ptr<InitBlock>;
 }
 
 #endif //BIBBLE_FRAMEWORK_INCLUDE_BIBBLE_PARSER_AST_GLOBAL_INITBLOCK_H

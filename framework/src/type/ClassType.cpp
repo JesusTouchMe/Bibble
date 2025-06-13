@@ -26,10 +26,6 @@ ClassType* ClassType::getBaseType() const {
     return mBaseType;
 }
 
-int ClassType::getStackSlots() const {
-    return 2;
-}
-
 JesusASM::Type* ClassType::getJesusASMType() const {
     std::string moduleName = mModuleName;
     std::replace(moduleName.begin(), moduleName.end(), '.', '/');
@@ -38,7 +34,7 @@ JesusASM::Type* ClassType::getJesusASMType() const {
 }
 
 codegen::Type ClassType::getRuntimeType() const {
-    return codegen::Type::Category2_Reference;
+    return codegen::Type::Reference;
 }
 
 Type::CastLevel ClassType::castTo(Type* destType) const {

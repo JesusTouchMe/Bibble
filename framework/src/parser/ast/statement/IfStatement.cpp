@@ -44,9 +44,9 @@ namespace parser {
     }
 
     void IfStatement::semanticCheck(diagnostic::Diagnostics& diag, bool& exit, bool statement) {
-        mCondition->semanticCheck(diag, exit, true);
-        mBody->semanticCheck(diag, exit, false);
-        if (mElseBody) mElseBody->semanticCheck(diag, exit, false);
+        mCondition->semanticCheck(diag, exit, false);
+        mBody->semanticCheck(diag, exit, true);
+        if (mElseBody) mElseBody->semanticCheck(diag, exit, true);
 
         if (!statement) {
             diag.compilerError(mErrorToken.getStartLocation(),

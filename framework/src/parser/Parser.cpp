@@ -16,7 +16,6 @@
 #include <format>
 #include <utility>
 
-
 namespace parser {
     Parser::Parser(std::vector<lexer::Token>& tokens, diagnostic::Diagnostics& diag,
                    symbol::ImportManager& importManager, symbol::Scope* globalScope)
@@ -97,10 +96,15 @@ namespace parser {
     }
 
     int Parser::getPrefixUnaryOperatorPrecedence(lexer::TokenType tokenType) {
-        switch(tokenType) {
+        switch (tokenType) {
             case lexer::TokenType::LeftParen:
             case lexer::TokenType::Minus:
                 return 85;
+
+            case lexer::TokenType::DoublePlus:
+            case lexer::TokenType::DoubleMinus:
+                return 80;
+
 
             default:
                 return 0;
@@ -108,7 +112,14 @@ namespace parser {
     }
 
     int Parser::getPostfixUnaryOperatorPrecedence(lexer::TokenType tokenType) {
-        return 0;
+        switch (tokenType) {
+            case lexer::TokenType::DoublePlus:
+            case lexer::TokenType::DoubleMinus:
+                return 90;
+
+            default:
+                return 0;
+        }
     }
 
     Type* Parser::parseType(bool failable, bool failableArray) {
@@ -174,11 +185,12 @@ namespace parser {
 
             token = peek(-1);
 
-            symbol::ClassSymbol* symbol;
-
-            if (names.size() == 1) symbol = mScope->findClass(names.back());
-            else symbol = mScope->findClass(names);
-            if (symbol != nullptr) type = symbol->getType();
+            if (names.size() == 1) type = ClassType::Find(mScope->findModuleScope()->name, names.back());
+            else if (names.size() == 2) type = ClassType::Find(names[0], names[1]);
+            else {
+                auto symbol = mScope->findClass(names);
+                if (symbol != nullptr) type = symbol->getType();
+            }
         }
 
         if (type == nullptr) {
@@ -239,6 +251,17 @@ namespace parser {
             case lexer::TokenType::Type:
             case lexer::TokenType::Identifier:
                 return parseFunction(std::move(modifierTokens));
+
+            case lexer::TokenType::LeftBrace:
+                if (!modifierTokens.empty()) {
+                    mDiag.compilerError(modifierTokens.front().getStartLocation(),
+                                        current().getEndLocation(),
+                                        std::format("using modifiers for {}init block{}",
+                                                    fmt::bold, fmt::defaults));
+                    std::exit(1);
+                }
+
+            return parseInitBlock();
 
             case lexer::TokenType::EndOfFile:
                 consume();
@@ -609,6 +632,7 @@ namespace parser {
             consume();
 
             std::vector<MethodModifier> modifiers;
+            bool abstract = false;
             for (auto& modifierToken : modifierTokens) {
                 auto modifier = GetMethodModifier(modifierToken, mDiag);
                 if (std::find(modifiers.begin(), modifiers.end(), modifier) != modifiers.end()) {
@@ -618,6 +642,8 @@ namespace parser {
                                                     fmt::bold, modifierToken.getText(), fmt::defaults));
                     std::exit(1);
                 }
+
+                if (modifier == MethodModifier::Abstract) abstract = true;
 
                 modifiers.push_back(modifier);
             }
@@ -670,6 +696,14 @@ namespace parser {
             scope->currentVariableIndex = 0;
             mScope = scope.get();
 
+            if (abstract) {
+                expectToken(lexer::TokenType::Semicolon);
+                consume();
+
+                methods.emplace_back(std::move(modifiers), std::move(name), functionType, std::move(arguments), std::vector<ASTNodePtr>(), std::move(scope), std::move(token), overrides, view, true);
+                return;
+            }
+
             expectToken(lexer::TokenType::LeftBrace);
             consume();
 
@@ -711,6 +745,27 @@ namespace parser {
 
             fields.emplace_back(std::move(modifiers), type, std::move(name));
         }
+    }
+
+    InitBlockPtr Parser::parseInitBlock() {
+        auto token = current();
+        consume(); // {
+
+        symbol::ScopePtr scope = std::make_unique<symbol::Scope>(mScope, "", false, Type::Get("void"));
+        scope->currentVariableIndex = 0;
+        mScope = scope.get();
+
+        std::vector<ASTNodePtr> body;
+        while (current().getTokenType() != lexer::TokenType::RightBrace) {
+            body.push_back(parseExpression());
+            expectToken(lexer::TokenType::Semicolon);
+            consume();
+        }
+        consume();
+
+        mScope = scope->parent;
+
+        return std::make_unique<InitBlock>(std::move(scope), std::move(body), std::move(token));
     }
 
     void Parser::parseImport() {
@@ -945,9 +1000,11 @@ namespace parser {
 
     bool IsModifierToken(const lexer::Token& token) {
         static constexpr std::array modifiers = {
+                lexer::TokenType::AbstractKeyword,
                 lexer::TokenType::NativeKeyword,
                 lexer::TokenType::PublicKeyword,
                 lexer::TokenType::PrivateKeyword,
+                lexer::TokenType::ProtectedKeyword,
                 lexer::TokenType::VirtualKeyword,
         };
 
@@ -960,6 +1017,8 @@ namespace parser {
                 return ClassModifier::Public;
             case lexer::TokenType::PrivateKeyword:
                 return ClassModifier::Private;
+            case lexer::TokenType::AbstractKeyword:
+                return ClassModifier::Abstract;
 
             default:
                 diag.compilerError(token.getStartLocation(),
@@ -976,6 +1035,8 @@ namespace parser {
                 return FieldModifier::Public;
             case lexer::TokenType::PrivateKeyword:
                 return FieldModifier::Private;
+            case lexer::TokenType::ProtectedKeyword:
+                return FieldModifier::Protected;
 
             default:
                 diag.compilerError(token.getStartLocation(),
@@ -992,13 +1053,17 @@ namespace parser {
                 return MethodModifier::Public;
             case lexer::TokenType::PrivateKeyword:
                 return MethodModifier::Private;
+            case lexer::TokenType::ProtectedKeyword:
+                return MethodModifier::Protected;
             case lexer::TokenType::VirtualKeyword:
                 return MethodModifier::Virtual;
+            case lexer::TokenType::AbstractKeyword:
+                return MethodModifier::Abstract;
 
             default:
                 diag.compilerError(token.getStartLocation(),
                                    token.getEndLocation(),
-                                   std::format("invalid field modifier: '{}{}{}'",
+                                   std::format("invalid method modifier: '{}{}{}'",
                                                fmt::bold, token.getText(), fmt::defaults));
             std::exit(1);
         }

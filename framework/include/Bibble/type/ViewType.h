@@ -16,7 +16,6 @@ public:
 
     Type* getBaseType() const;
 
-    int getStackSlots() const override;
     JesusASM::Type* getJesusASMType() const override;
     codegen::Type getRuntimeType() const override;
 

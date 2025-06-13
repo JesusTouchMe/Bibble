@@ -33,7 +33,7 @@ namespace codegen {
             , value(value) {}
 
         explicit Value(std::optional<CmpOperator> cmp, std::optional<ValueOrigin> value = std::nullopt)
-            : type(Type::Compiler_CmpResult)
+            : type(Type::CmpResult)
             , cmpOperator(cmp)
             , value(value) {}
 

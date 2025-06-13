@@ -9,7 +9,6 @@ class CharType : public Type {
 public:
     CharType();
 
-    int getStackSlots() const override;
     JesusASM::Type* getJesusASMType() const override;
     codegen::Type getRuntimeType() const override;
 

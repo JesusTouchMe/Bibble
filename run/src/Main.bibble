@@ -1,8 +1,6 @@
 import std.IO;
 import std.Primitives;
 
-import vm.System;
-
 void main() {
     IO::print("hey".length());
 }

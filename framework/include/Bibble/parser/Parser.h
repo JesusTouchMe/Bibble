@@ -13,13 +13,14 @@
 #include "Bibble/parser/ast/expression/StringLiteral.h"
 #include "Bibble/parser/ast/expression/VariableExpression.h"
 
+#include "Bibble/parser/ast/global/ClassDeclaration.h"
+#include "Bibble/parser/ast/global/Function.h"
+#include "Bibble/parser/ast/global/InitBlock.h"
+
 #include "Bibble/parser/ast/statement/CompoundStatement.h"
 #include "Bibble/parser/ast/statement/IfStatement.h"
 #include "Bibble/parser/ast/statement/ReturnStatement.h"
 #include "Bibble/parser/ast/statement/VariableDeclaration.h"
-
-#include "Bibble/parser/ast/global/ClassDeclaration.h"
-#include "Bibble/parser/ast/global/Function.h"
 
 #include "Bibble/symbol/Import.h"
 
@@ -65,6 +66,7 @@ namespace parser {
         void parseClassMember(std::string_view className, std::vector<ClassField>& fields,
                               std::vector<ClassMethod>& constructors, std::vector<ClassMethod>& methods,
                               std::vector<lexer::Token> modifierTokens);
+        InitBlockPtr parseInitBlock();
 
         void parseImport();
 

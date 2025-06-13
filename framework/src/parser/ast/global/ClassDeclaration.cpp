@@ -83,7 +83,7 @@ namespace parser {
             for (auto& argument : method.arguments) {
                 method.scope->locals.emplace(argument.name, symbol::LocalSymbol(*index, argument.type));
 
-                *index += argument.type->getStackSlots();
+                *index += 1;
             }
 
             constructorSymbols.push_back({ methodModifiers, method.name, mName + "::" + method.name, languageType, method.type, functionSymbol, false });
@@ -93,6 +93,8 @@ namespace parser {
             u16 methodModifiers = 0;
             for (auto modifier : method.modifiers) {
                 methodModifiers |= static_cast<u16>(modifier);
+
+                if (modifier == MethodModifier::Abstract) method.isVirtual = true;
             }
 
             symbol::ClassSymbol::Method* foundMethod = nullptr;
@@ -137,7 +139,7 @@ namespace parser {
             for (auto& argument : method.arguments) {
                 method.scope->locals.emplace(argument.name, symbol::LocalSymbol(*index, argument.type));
 
-                *index += argument.type->getStackSlots();
+                *index += 1;
             }
 
             methodSymbols.push_back({ methodModifiers, method.name, mName + "::" + method.name, languageType, method.type, functionSymbol, method.isVirtual });

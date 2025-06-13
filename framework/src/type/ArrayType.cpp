@@ -6,6 +6,8 @@
 #include <algorithm>
 #include <format>
 
+#include "Bibble/type/ClassType.h"
+
 ArrayType::ArrayType(Type* elementType)
     : Type(std::format("{}[]", elementType->getName()))
     , mElementType(elementType) {}
@@ -14,19 +16,30 @@ Type* ArrayType::getElementType() const {
     return mElementType;
 }
 
-int ArrayType::getStackSlots() const {
-    return 2;
-}
-
 JesusASM::Type* ArrayType::getJesusASMType() const {
     return JesusASM::Type::GetArrayType(mElementType->getJesusASMType());
 }
 
 codegen::Type ArrayType::getRuntimeType() const {
-    return codegen::Type::Category2_Reference;
+    return codegen::Type::Reference;
 }
 
 Type::CastLevel ArrayType::castTo(Type* destType) const {
+    if (destType->isClassView()) {
+        bool objectType;
+        if (destType->isViewType()) {
+            auto type = static_cast<ViewType*>(destType)->getBaseType();
+            objectType = type == Type::Get("object");
+        } else {
+            auto type = static_cast<ClassType*>(destType);
+            objectType = type == Type::Get("object");
+        }
+
+        if (objectType) {
+            return CastLevel::Implicit;
+        }
+    }
+
     if (destType->isViewType()) {
         auto viewType = static_cast<ViewType*>(destType);
         if (viewType->getBaseType() == this) {

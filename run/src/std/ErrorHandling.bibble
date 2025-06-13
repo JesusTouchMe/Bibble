@@ -1,0 +1,45 @@
+import std.Primitives;
+
+import vm.System;
+
+private void unwrapError() {
+    System::trap("Unwrap Err result");
+}
+
+private void unwrapOk() {
+    System::trap("Unwrap error for Ok result");
+}
+
+// TODO: generics
+class Result {
+    private object value;
+    private object error;
+
+    private Result(object value, object error) {
+        this.value = value;
+        this.error = error;
+    }
+
+    bool isOk() {
+        return error == null;
+    }
+
+    bool isError() {
+        return error != null;
+    }
+
+    object unwrap() {
+        if (isError()) ErrorHandling::unwrapError();
+        return value;
+    }
+
+    object unwrapError() {
+        if (isOk()) ErrorHandling::unwrapOk();
+        return error;
+    }
+
+    object valueOr(object defaultValue) {
+        if (isOk()) return value;
+        else return defaultValue;
+    }
+}
