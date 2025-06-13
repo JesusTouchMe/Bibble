@@ -466,6 +466,140 @@ namespace codegen {
         }
     }
 
+    void Builder::createJumpCmpEQ(::Type* type, Label* label) {
+        auto rhs = mContext.pop();
+        auto lhs = mContext.pop();
+
+        assert(lhs.type == rhs.type && type->getRuntimeType() == lhs.type);
+
+        if (lhs.value && rhs.value) {
+            if (lhs.value->value == rhs.value->value) {
+                mInsertPoint->remove(lhs.value->origin);
+                mInsertPoint->remove(rhs.value->origin);
+                createJump(label);
+            }
+        }
+
+        if (lhs.type == Type::Reference) {
+            insert<JumpInsnNode>(Opcodes::JMP_RCMPEQ, label);
+        } else if (lhs.type == Type::Handle) {
+            insert<JumpInsnNode>(Opcodes::JMP_HCMPEQ, label);
+        } else if (lhs.type == Type::Primitive) {
+            insert<JumpInsnNode>(Opcodes::JMP_CMPEQ, label);
+        } else {
+            assert(false && "bad type");
+        }
+    }
+
+    void Builder::createJumpCmpNE(::Type* type, Label* label) {
+        auto rhs = mContext.pop();
+        auto lhs = mContext.pop();
+
+        assert(lhs.type == rhs.type && type->getRuntimeType() == lhs.type);
+
+        if (lhs.value && rhs.value) {
+            if (lhs.value->value != rhs.value->value) {
+                mInsertPoint->remove(lhs.value->origin);
+                mInsertPoint->remove(rhs.value->origin);
+                createJump(label);
+            }
+        }
+
+        if (lhs.type == Type::Reference) {
+            insert<JumpInsnNode>(Opcodes::JMP_RCMPNE, label);
+        } else if (lhs.type == Type::Handle) {
+            insert<JumpInsnNode>(Opcodes::JMP_HCMPNE, label);
+        } else if (lhs.type == Type::Primitive) {
+            insert<JumpInsnNode>(Opcodes::JMP_CMPNE, label);
+        } else {
+            assert(false && "bad type");
+        }
+    }
+
+    void Builder::createJumpCmpLT(::Type* type, Label* label) {
+        auto rhs = mContext.pop();
+        auto lhs = mContext.pop();
+
+        assert(lhs.type == rhs.type && type->getRuntimeType() == lhs.type);
+
+        if (lhs.value && rhs.value) {
+            if (lhs.value->value < rhs.value->value) {
+                mInsertPoint->remove(lhs.value->origin);
+                mInsertPoint->remove(rhs.value->origin);
+                createJump(label);
+            }
+        }
+
+        if (lhs.type == Type::Primitive) {
+            insert<JumpInsnNode>(Opcodes::JMP_CMPLT, label);
+        } else {
+            assert(false && "bad type");
+        }
+    }
+
+    void Builder::createJumpCmpGT(::Type* type, Label* label) {
+        auto rhs = mContext.pop();
+        auto lhs = mContext.pop();
+
+        assert(lhs.type == rhs.type && type->getRuntimeType() == lhs.type);
+
+        if (lhs.value && rhs.value) {
+            if (lhs.value->value > rhs.value->value) {
+                mInsertPoint->remove(lhs.value->origin);
+                mInsertPoint->remove(rhs.value->origin);
+                createJump(label);
+            }
+        }
+
+        if (lhs.type == Type::Primitive) {
+            insert<JumpInsnNode>(Opcodes::JMP_CMPGT, label);
+        } else {
+            assert(false && "bad type");
+        }
+    }
+
+    void Builder::createJumpCmpLE(::Type* type, Label* label) {
+        auto rhs = mContext.pop();
+        auto lhs = mContext.pop();
+
+        assert(lhs.type == rhs.type && type->getRuntimeType() == lhs.type);
+
+        if (lhs.value && rhs.value) {
+            if (lhs.value->value <= rhs.value->value) {
+                mInsertPoint->remove(lhs.value->origin);
+                mInsertPoint->remove(rhs.value->origin);
+                createJump(label);
+            }
+        }
+
+        if (lhs.type == Type::Primitive) {
+            insert<JumpInsnNode>(Opcodes::JMP_CMPLE, label);
+        } else {
+            assert(false && "bad type");
+        }
+    }
+
+    void Builder::createJumpCmpGE(::Type* type, Label* label) {
+        auto rhs = mContext.pop();
+        auto lhs = mContext.pop();
+
+        assert(lhs.type == rhs.type && type->getRuntimeType() == lhs.type);
+
+        if (lhs.value && rhs.value) {
+            if (lhs.value->value >= rhs.value->value) {
+                mInsertPoint->remove(lhs.value->origin);
+                mInsertPoint->remove(rhs.value->origin);
+                createJump(label);
+            }
+        }
+
+        if (lhs.type == Type::Primitive) {
+            insert<JumpInsnNode>(Opcodes::JMP_CMPGE, label);
+        } else {
+            assert(false && "bad type");
+        }
+    }
+
     void Builder::createLdc(::Type* type, i64 value) {
         // we will not give a shit about the type if we can use a super optimized const instruction
         switch (value) {

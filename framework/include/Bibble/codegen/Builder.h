@@ -99,6 +99,13 @@ namespace codegen {
         void createJump(Label* label);
         void createCondJump(Label* trueLabel, Label* falseLabel);
 
+        void createJumpCmpEQ(::Type* type, Label* label);
+        void createJumpCmpNE(::Type* type, Label* label);
+        void createJumpCmpLT(::Type* type, Label* label);
+        void createJumpCmpGT(::Type* type, Label* label);
+        void createJumpCmpLE(::Type* type, Label* label);
+        void createJumpCmpGE(::Type* type, Label* label);
+
         void createLdc(::Type* type, i64 value);
         void createLdc(::Type* type, std::nullptr_t);
         void createLdc(std::string_view value);

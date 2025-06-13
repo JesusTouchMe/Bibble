@@ -127,9 +127,10 @@ namespace parser {
                 builder.createDiv(mType);
                 break;
 
-            case Operator::Equal:
-                builder.createCmpEQ(mLeft->getType());
-                break;
+            case Operator::Equal: {
+                auto trueLabel = builder.createLabel("");
+                auto falseLabel = builder.createLabel("");
+            }
             case Operator::NotEqual:
                 builder.createCmpNE(mLeft->getType());
                 break;
@@ -220,6 +221,35 @@ namespace parser {
 
                 break;
         }
+    }
+
+    void BinaryExpression::ccodegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag, codegen::Label* trueLabel, codegen::Label* falseLabel) {
+        mLeft->codegen(builder, ctx, diag, true);
+        mRight->codegen(builder, ctx, diag, true);
+        switch (mOperator) {
+            case Operator::Equal:
+                builder.createJumpCmpNE(mLeft->getType(), falseLabel);
+                break;
+            case Operator::NotEqual:
+                builder.createJumpCmpEQ(mLeft->getType(), falseLabel);
+                break;
+            case Operator::LessThan:
+                builder.createJumpCmpGE(mLeft->getType(), falseLabel);
+                break;
+            case Operator::GreaterThan:
+                builder.createJumpCmpLE(mLeft->getType(), falseLabel);
+                break;
+            case Operator::LessEqual:
+                builder.createJumpCmpGT(mLeft->getType(), falseLabel);
+                break;
+            case Operator::GreaterEqual:
+                builder.createJumpCmpLT(mLeft->getType(), falseLabel);
+                break;
+            default:
+                return;
+        }
+
+        builder.createJump(trueLabel);
     }
 
     void BinaryExpression::semanticCheck(diagnostic::Diagnostics& diag, bool& exit, bool statement) {

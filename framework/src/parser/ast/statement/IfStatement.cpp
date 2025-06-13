@@ -16,18 +16,15 @@ namespace parser {
     void IfStatement::codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag, bool statement) {
         // TODO: if expressions `var a = if (hello == "world") "yep" else "nop";`
 
-        mCondition->codegen(builder, ctx, diag, false);
-
         codegen::LabelPtr trueLabel = builder.createLabel("");
         codegen::LabelPtr falseLabel;
         codegen::LabelPtr mergeLabel = builder.createLabel("");
 
         if (mElseBody) {
             falseLabel = builder.createLabel("");
-
-            builder.createCondJump(trueLabel.get(), falseLabel.get());
+            mCondition->ccodegen(builder, ctx, diag, trueLabel.get(), falseLabel.get());
         } else {
-            builder.createCondJump(trueLabel.get(), mergeLabel.get());
+            mCondition->ccodegen(builder, ctx, diag, falseLabel.get(), mergeLabel.get());
         }
 
         builder.insertLabel(std::move(trueLabel));
