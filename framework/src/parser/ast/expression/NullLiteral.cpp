@@ -20,7 +20,7 @@ namespace parser {
     }
 
     bool NullLiteral::triviallyImplicitCast(diagnostic::Diagnostics& diag, Type* destType) {
-        if (destType->isClassType() || destType->isHandleType()) {
+        if (destType->isClassView() || destType->isArrayView() || destType->isHandleType()) {
             mType = destType;
             return true;
         }

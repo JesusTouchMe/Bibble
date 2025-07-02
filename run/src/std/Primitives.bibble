@@ -19,7 +19,7 @@ class String {
         return data;
     }
 
-    int length() view {
+    long length() view {
         return data.length;
     }
 

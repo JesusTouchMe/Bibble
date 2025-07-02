@@ -24,6 +24,10 @@ namespace parser {
                 mOperator = Operator::Decrement;
                 break;
 
+            case lexer::TokenType::Bang:
+                mOperator = Operator::LogicalNot;
+                break;
+
             default:
                 break;
         }
@@ -60,10 +64,10 @@ namespace parser {
 
                     if (mPostfix) {
                         if (!statement) builder.createDupX1(field->type);
-                        builder.createLdc(field->type, 1);
+                        builder.createLdc(field->type, (i64) 1);
                         builder.createAdd(field->type);
                     } else {
-                        builder.createLdc(field->type, 1);
+                        builder.createLdc(field->type, (i64) 1);
                         builder.createAdd(field->type);
                         if (!statement) builder.createDupX1(field->type);
                     }
@@ -89,10 +93,10 @@ namespace parser {
 
                 if (mPostfix) {
                     if (!statement) builder.createDupX1(field->type);
-                    builder.createLdc(field->type, 1);
+                    builder.createLdc(field->type, (i64) 1);
                     builder.createAdd(field->type);
                 } else {
-                    builder.createLdc(field->type, 1);
+                    builder.createLdc(field->type, (i64) 1);
                     builder.createAdd(field->type);
                     if (!statement) builder.createDupX1(field->type);
                 }
@@ -114,6 +118,12 @@ namespace parser {
         }
     }
 
+    void UnaryExpression::ccodegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag, codegen::Label* trueLabel, codegen::Label* falseLabel) {
+        if (mOperator == Operator::LogicalNot) {
+            mOperand->ccodegen(builder, ctx, diag, falseLabel, trueLabel);
+        }
+    }
+
     void UnaryExpression::semanticCheck(diagnostic::Diagnostics& diag, bool& exit, bool statement) {
         mOperand->semanticCheck(diag, exit, false);
     }
@@ -123,6 +133,8 @@ namespace parser {
 
         switch (mOperator) {
             case Operator::Negate:
+            case Operator::Increment:
+            case Operator::Decrement:
                 if (!mOperand->getType()->isIntegerType() && !mOperand->getType()->isCharType()) {
                     diag.compilerError(mErrorToken.getStartLocation(),
                                        mErrorToken.getEndLocation(),
@@ -134,6 +146,24 @@ namespace parser {
                     mType = mOperand->getType();
                 }
                 break;
+
+            case Operator::LogicalNot: {
+                Type* boolType = Type::Get("bool");
+                if (!mOperand->getType()->isBooleanType()) {
+                    if (mOperand->implicitCast(diag, boolType)) {
+                        mOperand = Cast(mOperand, boolType);
+                    } else {
+                        diag.compilerError(mErrorToken.getStartLocation(),
+                                           mErrorToken.getEndLocation(),
+                                           std::format("no match for '{}operator {}{}' with type '{}{}{}'",
+                                                       fmt::bold, mErrorToken.getName(), fmt::defaults,
+                                                       fmt::bold, mOperand->getType()->getName(), fmt::defaults));
+                        exit = true;
+                    }
+                }
+                mType = boolType;
+                break;
+            }
         }
     }
 

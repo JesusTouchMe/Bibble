@@ -56,7 +56,7 @@ namespace symbol {
         bool found = false;
 
         auto GetSignature = [](const Method& method) -> Signature {
-            return Signature(method.name, method.type);
+            return Signature(method.name, method.languageType);
         };
 
         for (auto& method : methods) {

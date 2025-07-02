@@ -15,7 +15,7 @@
 #include <JesusASM/tree/instructions/CallInsnNode.h>
 #include <JesusASM/tree/instructions/ClassInsnNode.h>
 #include <JesusASM/tree/instructions/FieldInsnNode.h>
-#include "JesusASM/tree/instructions/IncInsnNode.h"
+#include <JesusASM/tree/instructions/IncInsnNode.h>
 #include <JesusASM/tree/instructions/InsnNode.h>
 #include <JesusASM/tree/instructions/IntInsnNode.h>
 #include <JesusASM/tree/instructions/JumpInsnNode.h>
@@ -69,7 +69,9 @@ namespace codegen {
         void createPop(::Type* type);
 
         void createDup(::Type* type);
+        void createDup2(::Type* type1, ::Type* type2);
         void createDupX1(::Type* type);
+        void createDupX2(::Type* type);
         void createSwap(::Type* topType, ::Type* bottomType);
 
         void createInc(::Type* type, u16 index, i16 increment);
@@ -107,6 +109,7 @@ namespace codegen {
         void createJumpCmpGE(::Type* type, Label* label);
 
         void createLdc(::Type* type, i64 value);
+        void createLdc(::Type* type, bool value);
         void createLdc(::Type* type, std::nullptr_t);
         void createLdc(std::string_view value);
 
@@ -184,8 +187,8 @@ namespace codegen {
                 mInsertPoint->remove(lhs.value->origin);
                 mInsertPoint->remove(rhs.value->origin);
 
-                if (lhs.value->value < rhs.value->value) createLdc(::Type::Get("int"), -1);
-                else if (lhs.value->value > rhs.value->value) createLdc(::Type::Get("int"), 1);
+                if (lhs.value->value < rhs.value->value) createLdc(::Type::Get("int"), (i64) -1);
+                else if (lhs.value->value > rhs.value->value) createLdc(::Type::Get("int"), (i64) 1);
                 else createLdc(::Type::Get("int"), (i64) 0);
 
                 mContext.top().type = Type::CmpResult;

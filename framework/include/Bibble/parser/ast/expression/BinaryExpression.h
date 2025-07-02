@@ -25,7 +25,12 @@ namespace parser {
             LessEqual,
             GreaterEqual,
 
+            LogicalAnd,
+            LogicalOr,
+
             Assign,
+            AddAssign,
+            SubAssign,
 
             Index,
         };

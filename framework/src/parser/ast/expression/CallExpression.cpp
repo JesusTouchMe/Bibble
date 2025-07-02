@@ -228,7 +228,7 @@ namespace parser {
 
                 if (mIsMemberFunction) {
                     if (arguments.size() != mParameters.size() + 1) {
-                        candidateFunctions.erase(it);
+                        it = candidateFunctions.erase(it);
                     } else {
                         ++it;
                     }
@@ -242,13 +242,13 @@ namespace parser {
             for (auto& candidate : candidateFunctions) {
                 int score = 0;
                 bool disallowed = false;
-                size_t i = mIsMemberFunction ? 1 : 0;
+                size_t i = 0;
 
                 for (; i < mParameters.size(); i++) {
-                    Type::CastLevel castLevel = mParameters[i]->getType()->castTo(GetType(candidate)->getArgumentTypes()[i]);
+                    Type::CastLevel castLevel = mParameters[i]->getType()->castTo(GetType(candidate)->getArgumentTypes()[i + mIsMemberFunction]);
                     int multiplier = 0;
 
-                    if (mParameters[i]->getType() == GetType(candidate)->getArgumentTypes()[i]) multiplier = 0;
+                    if (mParameters[i]->getType() == GetType(candidate)->getArgumentTypes()[i + mIsMemberFunction]) multiplier = 0;
                     else if (castLevel == Type::CastLevel::Implicit) multiplier = 1;
                     else if (castLevel == Type::CastLevel::ImplicitWarning) multiplier = 2;
                     else disallowed = true;

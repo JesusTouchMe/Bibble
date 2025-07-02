@@ -70,7 +70,7 @@ namespace symbol {
 
         auto ast = parser.parse();
 
-        mSourceFiles.emplace_back(std::move(fullPath), std::move(ast), std::move(scope), std::move(diag), std::move(text));
+        mSourceFiles.emplace_back(std::move(fullPath), std::move(ast), std::move(scope), std::move(diag), std::move(text), std::move(fileName));
 
         return &mSourceFiles.back();
     }

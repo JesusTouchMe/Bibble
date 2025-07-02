@@ -21,11 +21,13 @@ namespace parser {
     }
 
     void NewArrayExpression::typeCheck(diagnostic::Diagnostics& diag, bool& exit) {
-        auto intType = Type::Get("int");
+        mLength->typeCheck(diag, exit);
 
-        if (mLength->getType() != intType) {
-            if (mLength->implicitCast(diag, intType)) {
-                mLength = Cast(mLength, intType);
+        auto longType = Type::Get("long");
+
+        if (mLength->getType() != longType) {
+            if (mLength->implicitCast(diag, longType)) {
+                mLength = Cast(mLength, longType);
             } else {
                 diag.compilerError(mErrorToken.getStartLocation(),
                                    mErrorToken.getEndLocation(),

@@ -31,14 +31,7 @@ namespace symbol {
         FunctionType* desc;
 
         bool operator==(const Signature& other) const {
-            if (other.desc->getArgumentTypes().size() != desc->getArgumentTypes().size()) return false;
-            if (other.name != name) return false;
-
-            for (auto it = desc->getArgumentTypes().begin() + 1, it1 = other.desc->getArgumentTypes().begin() + 1; it != desc->getArgumentTypes().end(); ++it, ++it1) {
-                if (*it != *it1) return false;
-            }
-
-            return other.desc->getReturnType() == desc->getReturnType();
+            return other.name == name && other.desc == desc;
         }
     };
 }
@@ -48,11 +41,7 @@ namespace std {
     struct hash<symbol::Signature> {
         std::size_t operator()(const symbol::Signature& signature) const {
             std::size_t hash = std::hash<std::string_view>{}(signature.name);
-
-            for (auto it = signature.desc->getArgumentTypes().begin() + 1; it != signature.desc->getArgumentTypes().end(); ++it) {
-                hash ^= std::hash<Type*>{}(*it) + 0x9e3779b9 + (hash << 6) + (hash >> 2);
-            }
-            hash ^= std::hash<Type*>{}(signature.desc->getReturnType());
+            hash ^= std::hash<Type*>{}(signature.desc);
 
             return hash;
         }

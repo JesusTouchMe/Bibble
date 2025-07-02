@@ -7,17 +7,17 @@ abstract class InStream {
 
     abstract byte read();
 
-    virtual int read(byte[] buffer) {
-        return read(buffer, 0, buffer.length);
-    }
-
-    virtual int read(byte[] buffer, int offset, int count) {
+    virtual long read(byte[] buffer, long offset, long count) {
         return 0;
     }
 
-    abstract int available();
+    virtual long read(byte[] buffer) {
+        return read(buffer, 0, buffer.length);
+    }
 
-    virtual int skip(int amount) {
+    abstract long available();
+
+    virtual long skip(long amount) {
         return 0;
     }
 }
@@ -29,24 +29,30 @@ abstract class OutStream {
 
     abstract void write(byte b);
 
-    virtual void write(byte[] bytes) {
-        write(bytes, 0, bytes.length);
+    virtual void write(byte[] bytes, long offset, long count) {
+
     }
 
-    virtual void write(byte[] bytes, int offset, int count) {
-
+    virtual void write(byte[] bytes) {
+        write(bytes, 0, bytes.length);
     }
 }
 
 class BufferedInStream extends InStream {
     protected InStream in;
     protected byte[] buffer;
-    protected int count;
+    protected int count; // we can use int because the buffer size is limited to int in the constructor
     protected int position;
 
     BufferedInStream(InStream in, int bufferSize) {
-        if (in == null) Trap::nullReference("InStream");
-        if (bufferSize <= 0) Trap::illegalArgument("bufferSize <= 0");
+        if (in == null) {
+            Trap::nullReference("InStream");
+            return; // TODO: noreturn function annotation
+        }
+        if (bufferSize <= 0) {
+            Trap::illegalArgument("bufferSize <= 0");
+            return; // TODO: noreturn function annotation
+        }
 
         this.in = in;
         this.buffer = new byte[bufferSize];
@@ -55,7 +61,10 @@ class BufferedInStream extends InStream {
     }
 
     private void fill() {
-        if (in == null) Trap::ioError("Stream closed");
+        if (in == null) {
+            Trap::ioError("Stream closed");
+            return; // TODO: noreturn function annotation
+        }
         count = in.read(buffer, 0, buffer.length);
         position = 0;
     }
@@ -70,7 +79,7 @@ class BufferedInStream extends InStream {
     }
 
     byte read() override {
-        if (pos >= count) {
+        if (position >= count) {
             fill();
             if (count == -1) return -1;
         }
@@ -78,12 +87,18 @@ class BufferedInStream extends InStream {
         return buffer[position++];
     }
 
-    int read(byte[] buffer, int offset, int count) override {
-        if (buffer == null) Trap::nullReference();
-        if (offset < 0 || count < 0 || count > buffer.length - offset) Trap::outOfBounds();
+    long read(byte[] buffer, long offset, long count) override {
+        if (buffer == null) {
+            Trap::nullReference();
+            return 0; // TODO: noreturn function annotation
+        }
+        if (offset < 0 || count < 0 || count > buffer.length - offset) {
+            Trap::outOfBounds();
+            return 0; // TODO: noreturn function annotation
+        }
         if (count == 0) return 0;
 
-        int totalRead = 0;
+        long totalRead = 0;
         //TODO: while loop
         /*
         while (count > 0) {
@@ -112,12 +127,12 @@ class BufferedInStream extends InStream {
         return totalRead;
     }
 
-    int available() override {
+    long available() override {
         if (in == null) Trap::ioError("Stream closed");
         return (count - position) + in.available();
     }
 
-    int skip(int amount) {
+    long skip(long amount) {
         if (amount <= 0) return 0;
 
         int available = count - position;
@@ -127,7 +142,7 @@ class BufferedInStream extends InStream {
             if (available == -1) return 0;
         }
 
-        int skipped = Math::min(available, amount);
+        long skipped = Math::min(available, amount);
         position += skipped;
         return skipped;
     }
@@ -136,11 +151,17 @@ class BufferedInStream extends InStream {
 class BufferedOutStream extends OutStream {
     protected OutStream out;
     protected byte[] buffer;
-    protected int count;
+    protected int count; // can be int since we limit buffer size to int in constructor
 
     BufferedOutStream(OutStream out, int bufferSize) {
-        if (out == null) Trap::nullReference("OutStream")
-        if (bufferSize <= 0) Trap::illegalArgument("bufferSize <= 0");
+        if (out == null) {
+            Trap::nullReference("OutStream");
+            return; // TODO: noreturn function annotation
+        }
+        if (bufferSize <= 0) {
+            Trap::illegalArgument("bufferSize <= 0");
+            return; // TODO: noreturn function annotation
+        }
 
         this.out = out;
         this.buffer = new byte[bufferSize];
@@ -176,9 +197,15 @@ class BufferedOutStream extends OutStream {
         buffer[count++] = b;
     }
 
-    void write(byte[] buffer, int offset, int count) {
-        if (buffer == null) Trap::nullReference();
-        if (offset < 0 || count < 0 || count > buffer.length - offset) Trap::outOfBounds();
+    void write(byte[] buffer, long offset, long count) {
+        if (buffer == null) {
+            Trap::nullReference();
+            return; // TODO: noreturn function annotation
+        }
+        if (offset < 0 || count < 0 || count > buffer.length - offset) {
+            Trap::outOfBounds();
+            return; // TODO: noreturn function annotation
+        }
 
         if (count == 0) return;
 

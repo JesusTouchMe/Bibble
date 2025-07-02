@@ -24,7 +24,7 @@ namespace parser {
             falseLabel = builder.createLabel("");
             mCondition->ccodegen(builder, ctx, diag, trueLabel.get(), falseLabel.get());
         } else {
-            mCondition->ccodegen(builder, ctx, diag, falseLabel.get(), mergeLabel.get());
+            mCondition->ccodegen(builder, ctx, diag, trueLabel.get(), mergeLabel.get());
         }
 
         builder.insertLabel(std::move(trueLabel));

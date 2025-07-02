@@ -117,6 +117,29 @@ namespace codegen {
         insert<InsnNode>(Opcodes::DUP);
     }
 
+    void Builder::createDup2(::Type* type1, ::Type* type2) {
+        auto value2 = mContext.pop();
+        auto value1 = mContext.pop();
+
+        assert(value1.type == type1->getRuntimeType());
+        assert(value2.type == type2->getRuntimeType());
+
+        if (value1.value && value2.value) {
+            mContext.push(value1);
+            mContext.push(value2);
+            createLdc(type1, value1.value->value);
+            createLdc(type2, value2.value->value);
+            return;
+        }
+
+        mContext.push(value1);
+        mContext.push(value2);
+        mContext.push(value1);
+        mContext.push(value2);
+
+        insert<InsnNode>(Opcodes::DUP2);
+    }
+
     void Builder::createDupX1(::Type* type) {
         auto top = mContext.pop();
         auto below = mContext.pop();
@@ -136,6 +159,30 @@ namespace codegen {
         mContext.push(top);
 
         insert<InsnNode>(Opcodes::DUP_X1);
+    }
+
+    void Builder::createDupX2(::Type* type) {
+        auto top = mContext.pop();
+        auto mid = mContext.pop();
+        auto bottom = mContext.pop();
+
+        assert(top.type == type->getRuntimeType());
+
+        if (top.value && mid.value && bottom.value) {
+            mContext.push(top);
+            mContext.push(bottom);
+            mContext.push(mid);
+            createLdc(type, top.value->value); // again, is this gonna be more efficient than dup_x2? i need to run a lot of timing soon
+            return;
+        }
+
+
+        mContext.push(top);
+        mContext.push(bottom);
+        mContext.push(mid);
+        mContext.push(top);
+
+        insert<InsnNode>(Opcodes::DUP_X2);
     }
 
     void Builder::createSwap(::Type* topType, ::Type* bottomType) {
@@ -685,6 +732,18 @@ namespace codegen {
             }
         } else {
             assert(false && "bad type");
+        }
+    }
+
+    void Builder::createLdc(::Type* type, bool value) {
+        assert(type->getRuntimeType() == Type::Primitive);
+
+        if (value) {
+            auto* origin = insert<InsnNode>(Opcodes::CONST_1);
+            mContext.emplace(Type::Primitive, ValueOrigin(origin, 1));
+        } else {
+            auto* origin = insert<InsnNode>(Opcodes::CONST_0);
+            mContext.emplace(Type::Primitive, ValueOrigin(origin, 0));
         }
     }
 

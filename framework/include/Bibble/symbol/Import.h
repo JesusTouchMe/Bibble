@@ -19,6 +19,7 @@ namespace symbol {
         ScopePtr scope;
         diagnostic::Diagnostics diag;
         std::string sourceCode;
+        std::string fileName;
     };
 
     class ImportManager {

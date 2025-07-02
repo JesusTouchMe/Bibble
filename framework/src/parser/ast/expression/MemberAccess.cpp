@@ -101,7 +101,7 @@ namespace parser {
         mClass->typeCheck(diag, exit);
 
         if (mClass->getType()->isArrayView() && mId == "length") {
-            mType = Type::Get("int");
+            mType = Type::Get("long");
             return;
         }
 

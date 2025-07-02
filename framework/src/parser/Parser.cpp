@@ -87,7 +87,15 @@ namespace parser {
             case lexer::TokenType::BangEqual:
                 return 50;
 
+            case lexer::TokenType::DoubleAmpersand:
+                return 30;
+
+            case lexer::TokenType::DoublePipe:
+                return 25;
+
             case lexer::TokenType::Equal:
+            case lexer::TokenType::PlusEqual:
+            case lexer::TokenType::MinusEqual:
                 return 20;
 
             default:

@@ -56,8 +56,24 @@ namespace parser {
                 mOperator = Operator::GreaterEqual;
                 break;
 
+            case lexer::TokenType::DoubleAmpersand:
+                mOperator = Operator::LogicalAnd;
+                break;
+
+            case lexer::TokenType::DoublePipe:
+                mOperator = Operator::LogicalOr;
+                break;
+
             case lexer::TokenType::Equal:
                 mOperator = Operator::Assign;
+                break;
+
+            case lexer::TokenType::PlusEqual:
+                mOperator = Operator::AddAssign;
+                break;
+
+            case lexer::TokenType::MinusEqual:
+                mOperator = Operator::SubAssign;
                 break;
 
             case lexer::TokenType::LeftBracket:
@@ -76,12 +92,119 @@ namespace parser {
             , mRight(std::move(right)) {}
 
     void BinaryExpression::codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag, bool statement) {
-        if (mOperator != Operator::Assign && mOperator != Operator::Index) {
+        if (mOperator != Operator::Assign && mOperator != Operator::AddAssign && mOperator != Operator::SubAssign && mOperator != Operator::Index) {
             mLeft->codegen(builder, ctx, diag, statement);
             mRight->codegen(builder, ctx, diag, statement);
         }
 
-        if (statement && mOperator != Operator::Assign) return;
+        if (statement && mOperator != Operator::Assign && mOperator != Operator::AddAssign && mOperator != Operator::SubAssign) return;
+
+        auto createAssign = [&]() {
+            if (auto variableExpression = dynamic_cast<VariableExpression*>(mLeft.get())) {
+                if (variableExpression->isImplicitMember()) {
+                    auto scopeOwner = mScope->findOwner();
+
+                    symbol::LocalSymbol* local = mScope->findLocal("this");
+                    if (local == nullptr) {
+                        diag.fatalError("scope is owned by a class, but no 'this' local exists");
+                    }
+
+                    auto field = scopeOwner->getField(variableExpression->getName());
+
+                    builder.createLoad(local->type, local->index);
+
+                    if (mOperator == Operator::AddAssign || mOperator == Operator::SubAssign) {
+                        builder.createDup(local->type);
+                        builder.createGetField(scopeOwner->getType(), field->type, field->name);
+                        mRight->codegen(builder, ctx, diag, false);
+
+                        if (mOperator == Operator::AddAssign) builder.createAdd(mLeft->getType());
+                        else builder.createSub(mLeft->getType());
+
+                        if (!statement) builder.createDupX1(mRight->getType());
+
+                        builder.createSetField(scopeOwner->getType(), field->type, field->name);
+                    } else {
+                        mRight->codegen(builder, ctx, diag, false);
+
+                        if (!statement) builder.createDupX1(mRight->getType());
+
+                        builder.createSetField(scopeOwner->getType(), field->type, field->name);
+                    }
+                } else {
+                    symbol::LocalSymbol* local = mScope->findLocal(variableExpression->getName());
+                    if (local == nullptr) {
+                        diag.compilerError(mErrorToken.getStartLocation(),
+                                           mErrorToken.getEndLocation(),
+                                           std::format("couldn't find local variable '{}{}{}'",
+                                                       fmt::bold, variableExpression->getName(), fmt::defaults));
+                        std::exit(1);
+                    }
+
+                    if (mOperator == Operator::AddAssign || mOperator == Operator::SubAssign) {
+                        builder.createLoad(local->type, local->index);
+                        mRight->codegen(builder, ctx, diag, false);
+                        builder.createAdd(mLeft->getType());
+                        if (!statement) builder.createDup(mRight->getType());
+                        builder.createStore(local->type, local->index);
+                    } else {
+                        mRight->codegen(builder, ctx, diag, false);
+                        if (!statement) builder.createDup(mRight->getType());
+
+                        builder.createStore(local->type, local->index);
+                    }
+                }
+            } else if (auto memberAccess = dynamic_cast<MemberAccess*>(mLeft.get())) {
+                memberAccess->getClass()->codegen(builder, ctx, diag, false);
+
+                auto field = memberAccess->getClassSymbol()->getField(memberAccess->getId());
+
+                if (mOperator == Operator::AddAssign || mOperator == Operator::SubAssign) {
+                    builder.createDup(memberAccess->getClassType());
+                    builder.createGetField(memberAccess->getClassType(), field->type, field->name);
+                    mRight->codegen(builder, ctx, diag, false);
+
+                    if (mOperator == Operator::AddAssign) builder.createAdd(mLeft->getType());
+                    else builder.createSub(mLeft->getType());
+
+                    if (!statement) builder.createDupX1(mRight->getType());
+
+                    builder.createSetField(memberAccess->getClassType(), field->type, field->name);
+                } else {
+                    mRight->codegen(builder, ctx, diag, false);
+                    builder.createSetField(memberAccess->getClassType(), field->type, field->name);
+
+                    if (!statement) builder.createDupX1(mRight->getType());
+                }
+            } else if (auto binaryExpr = dynamic_cast<BinaryExpression*>(mLeft.get()); binaryExpr->mOperator == Operator::Index) {
+                ASTNode* array = binaryExpr->mLeft.get();
+                ASTNode* index = binaryExpr->mRight.get();
+
+                array->codegen(builder, ctx, diag, false);
+                index->codegen(builder, ctx, diag, false);
+
+                if (mOperator == Operator::AddAssign || mOperator == Operator::SubAssign) {
+                    builder.createDup2(array->getType(), index->getType());
+                    builder.createArrayLoad(array->getType());
+
+                    mRight->codegen(builder, ctx, diag, false);
+
+                    if (mOperator == Operator::AddAssign) builder.createAdd(mLeft->getType());
+                    else builder.createSub(mLeft->getType());
+
+                    if (!statement) builder.createDupX2(mRight->getType());
+
+                    builder.createArrayStore(array->getType());
+                } else {
+                    mRight->codegen(builder, ctx, diag, false);
+                    if (!statement) builder.createDupX2(mRight->getType());
+
+                    builder.createArrayStore(array->getType());
+                }
+            } else {
+                diag.fatalError("TODO: error message");
+            }
+        };
 
         switch (mOperator) {
             case Operator::Add:
@@ -130,87 +253,98 @@ namespace parser {
             case Operator::Equal: {
                 auto trueLabel = builder.createLabel("");
                 auto falseLabel = builder.createLabel("");
+                auto mergeLabel = builder.createLabel("");
+
+                builder.createJumpCmpNE(mLeft->getType(), falseLabel.get());
+                builder.insertLabel(std::move(trueLabel)); // this is required to be here because the code verifier of jesusasm is shit. fix it
+                builder.createLdc(mType, true);
+                builder.createJump(mergeLabel.get());
+                builder.insertLabel(std::move(falseLabel));
+                builder.createLdc(mType, false);
+                builder.insertLabel(std::move(mergeLabel));
+
+                break;
             }
-            case Operator::NotEqual:
-                builder.createCmpNE(mLeft->getType());
+            case Operator::NotEqual: {
+                auto trueLabel = builder.createLabel("");
+                auto falseLabel = builder.createLabel("");
+                auto mergeLabel = builder.createLabel("");
+
+                builder.createJumpCmpEQ(mLeft->getType(), falseLabel.get());
+                builder.insertLabel(std::move(trueLabel)); // this is required to be here because the code verifier of jesusasm is shit. fix it
+                builder.createLdc(mType, true);
+                builder.createJump(mergeLabel.get());
+                builder.insertLabel(std::move(falseLabel));
+                builder.createLdc(mType, false);
+                builder.insertLabel(std::move(mergeLabel));
+
                 break;
-            case Operator::LessThan:
-                builder.createCmpLT(mLeft->getType());
+            }
+            case Operator::LessThan: {
+                auto trueLabel = builder.createLabel("");
+                auto falseLabel = builder.createLabel("");
+                auto mergeLabel = builder.createLabel("");
+
+                builder.createJumpCmpGE(mLeft->getType(), falseLabel.get());
+                builder.insertLabel(std::move(trueLabel)); // this is required to be here because the code verifier of jesusasm is shit. fix it
+                builder.createLdc(mType, true);
+                builder.createJump(mergeLabel.get());
+                builder.insertLabel(std::move(falseLabel));
+                builder.createLdc(mType, false);
+                builder.insertLabel(std::move(mergeLabel));
+
                 break;
-            case Operator::GreaterThan:
-                builder.createCmpGT(mLeft->getType());
+            }
+            case Operator::GreaterThan: {
+                auto trueLabel = builder.createLabel("");
+                auto falseLabel = builder.createLabel("");
+                auto mergeLabel = builder.createLabel("");
+
+                builder.createJumpCmpLE(mLeft->getType(), falseLabel.get());
+                builder.insertLabel(std::move(trueLabel)); // this is required to be here because the code verifier of jesusasm is shit. fix it
+                builder.createLdc(mType, true);
+                builder.createJump(mergeLabel.get());
+                builder.insertLabel(std::move(falseLabel));
+                builder.createLdc(mType, false);
+                builder.insertLabel(std::move(mergeLabel));
+
                 break;
-            case Operator::LessEqual:
-                builder.createCmpLE(mLeft->getType());
+            }
+            case Operator::LessEqual: {
+                auto trueLabel = builder.createLabel("");
+                auto falseLabel = builder.createLabel("");
+                auto mergeLabel = builder.createLabel("");
+
+                builder.createJumpCmpGT(mLeft->getType(), falseLabel.get());
+                builder.insertLabel(std::move(trueLabel)); // this is required to be here because the code verifier of jesusasm is shit. fix it
+                builder.createLdc(mType, true);
+                builder.createJump(mergeLabel.get());
+                builder.insertLabel(std::move(falseLabel));
+                builder.createLdc(mType, false);
+                builder.insertLabel(std::move(mergeLabel));
+
                 break;
-            case Operator::GreaterEqual:
-                builder.createCmpGE(mLeft->getType());
+            }
+            case Operator::GreaterEqual: {
+                auto trueLabel = builder.createLabel("");
+                auto falseLabel = builder.createLabel("");
+                auto mergeLabel = builder.createLabel("");
+
+                builder.createJumpCmpLT(mLeft->getType(), falseLabel.get());
+                builder.insertLabel(std::move(trueLabel)); // this is required to be here because the code verifier of jesusasm is shit. fix it
+                builder.createLdc(mType, true);
+                builder.createJump(mergeLabel.get());
+                builder.insertLabel(std::move(falseLabel));
+                builder.createLdc(mType, false);
+                builder.insertLabel(std::move(mergeLabel));
+
                 break;
+            }
 
             case Operator::Assign:
-                if (auto variableExpression = dynamic_cast<VariableExpression*>(mLeft.get())) {
-                    if (variableExpression->isImplicitMember()) {
-                        auto scopeOwner = mScope->findOwner();
-
-                        symbol::LocalSymbol* local = mScope->findLocal("this");
-                        if (local == nullptr) {
-                            diag.fatalError("scope is owned by a class, but no 'this' local exists");
-                        }
-
-                        builder.createLoad(local->type, local->index);
-                        if (!statement) builder.createDup(local->type);
-
-                        mRight->codegen(builder, ctx, diag, false);
-
-                        if (!statement) builder.createDupX1(mRight->getType());
-
-                        auto field = scopeOwner->getField(variableExpression->getName());
-                        builder.createSetField(scopeOwner->getType(), field->type, field->name);
-                    } else {
-                        symbol::LocalSymbol* local = mScope->findLocal(variableExpression->getName());
-                        if (local == nullptr) {
-                            diag.compilerError(mErrorToken.getStartLocation(),
-                                               mErrorToken.getEndLocation(),
-                                               std::format("couldn't find local variable '{}{}{}'",
-                                                           fmt::bold, variableExpression->getName(), fmt::defaults));
-                            std::exit(1);
-                        }
-
-                        mRight->codegen(builder, ctx, diag, false);
-                        if (!statement) builder.createDup(mRight->getType());
-
-                        builder.createStore(local->type, local->index);
-                    }
-                } else if (auto memberAccess = dynamic_cast<MemberAccess*>(mLeft.get())) {
-                    memberAccess->getClass()->codegen(builder, ctx, diag, false);
-                    if (!statement) builder.createDup(memberAccess->getClass()->getType());
-
-                    mRight->codegen(builder, ctx, diag, false);
-
-                        if (!statement) builder.createDupX1(mRight->getType());
-
-                    auto field = memberAccess->getClassSymbol()->getField(memberAccess->getId());
-                    builder.createSetField(memberAccess->getClassType(), field->type, field->name);
-                } else if (auto binaryExpr = dynamic_cast<BinaryExpression*>(mLeft.get()); binaryExpr->mOperator == Operator::Index) {
-                    ASTNode* array = binaryExpr->mLeft.get();
-                    ASTNode* index = binaryExpr->mRight.get();
-
-                    array->codegen(builder, ctx, diag, false);
-                    index->codegen(builder, ctx, diag, false);
-                    mRight->codegen(builder, ctx, diag, false);
-
-                    builder.createArrayStore(array->getType());
-
-                    if (!statement) { // TODO: instruction that duplicates top element and places it 3 elements down
-                        array->codegen(builder, ctx, diag, false);
-                        index->codegen(builder, ctx, diag, false);
-
-                        builder.createArrayLoad(array->getType());
-                    }
-                } else {
-                    diag.fatalError("TODO: error message");
-                }
-
+            case Operator::AddAssign:
+            case Operator::SubAssign:
+                createAssign();
                 break;
 
             case Operator::Index:
@@ -224,32 +358,47 @@ namespace parser {
     }
 
     void BinaryExpression::ccodegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag, codegen::Label* trueLabel, codegen::Label* falseLabel) {
-        mLeft->codegen(builder, ctx, diag, true);
-        mRight->codegen(builder, ctx, diag, true);
-        switch (mOperator) {
-            case Operator::Equal:
-                builder.createJumpCmpNE(mLeft->getType(), falseLabel);
-                break;
-            case Operator::NotEqual:
-                builder.createJumpCmpEQ(mLeft->getType(), falseLabel);
-                break;
-            case Operator::LessThan:
-                builder.createJumpCmpGE(mLeft->getType(), falseLabel);
-                break;
-            case Operator::GreaterThan:
-                builder.createJumpCmpLE(mLeft->getType(), falseLabel);
-                break;
-            case Operator::LessEqual:
-                builder.createJumpCmpGT(mLeft->getType(), falseLabel);
-                break;
-            case Operator::GreaterEqual:
-                builder.createJumpCmpLT(mLeft->getType(), falseLabel);
-                break;
-            default:
-                return;
-        }
+        if (mOperator == Operator::LogicalAnd) {
+            auto newLabel = builder.createLabel("");
 
-        builder.createJump(trueLabel);
+            mLeft->ccodegen(builder, ctx, diag, newLabel.get(), falseLabel);
+            builder.insertLabel(std::move(newLabel));
+            mRight->ccodegen(builder, ctx, diag, trueLabel, falseLabel);
+        } else if (mOperator == Operator::LogicalOr) {
+            auto newLabel = builder.createLabel("");
+
+            mLeft->ccodegen(builder, ctx, diag, trueLabel, newLabel.get());
+            builder.insertLabel(std::move(newLabel));
+            mRight->ccodegen(builder, ctx, diag, trueLabel, falseLabel);
+        } else {
+            mLeft->codegen(builder, ctx, diag, false);
+            mRight->codegen(builder, ctx, diag, false);
+
+            switch (mOperator) {
+                case Operator::Equal:
+                    builder.createJumpCmpNE(mLeft->getType(), falseLabel);
+                    break;
+                case Operator::NotEqual:
+                    builder.createJumpCmpEQ(mLeft->getType(), falseLabel);
+                    break;
+                case Operator::LessThan:
+                    builder.createJumpCmpGE(mLeft->getType(), falseLabel);
+                    break;
+                case Operator::GreaterThan:
+                    builder.createJumpCmpLE(mLeft->getType(), falseLabel);
+                    break;
+                case Operator::LessEqual:
+                    builder.createJumpCmpGT(mLeft->getType(), falseLabel);
+                    break;
+                case Operator::GreaterEqual:
+                    builder.createJumpCmpLT(mLeft->getType(), falseLabel);
+                    break;
+                default:
+                    return;
+            }
+
+            builder.createJump(trueLabel);
+        }
     }
 
     void BinaryExpression::semanticCheck(diagnostic::Diagnostics& diag, bool& exit, bool statement) {
@@ -328,6 +477,32 @@ namespace parser {
                 mType = Type::Get("bool");
                 break;
 
+            case Operator::LogicalAnd:
+            case Operator::LogicalOr: {
+                Type* boolType = Type::Get("bool");
+
+                auto checkOperand = [this, &diag, &exit, boolType](ASTNodePtr& operand) {
+                    if (!operand->getType()->isBooleanType()) {
+                        if (operand->implicitCast(diag, boolType)) {
+                            operand = Cast(operand, boolType);
+                        } else {
+                            diag.compilerError(mErrorToken.getStartLocation(),
+                                        mErrorToken.getEndLocation(),
+                                        std::format("no match for '{}operator {}{}' with the given types '{}{}{}' and '{}{}{}'",
+                                                    fmt::bold, mErrorToken.getName(), fmt::defaults,
+                                                    fmt::bold, mLeft->getType()->getName(), fmt::defaults,
+                                                    fmt::bold, mRight->getType()->getName(), fmt::defaults));
+                            exit = true;
+                        }
+                    }
+                };
+
+                checkOperand(mLeft);
+                checkOperand(mRight);
+                mType = boolType;
+                break;
+            }
+
             case Operator::Assign:
                 if (mLeft->getType() != mRight->getType()) {
                     if (mRight->implicitCast(diag, mLeft->getType())) {
@@ -356,6 +531,34 @@ namespace parser {
 
                 mType = mLeft->getType();
 
+                break;
+
+            case Operator::AddAssign:
+            case Operator::SubAssign:
+                if (mLeft->getType()->isIntegerType() || mLeft->getType()->isCharType()) {
+                    if (mLeft->getType() != mRight->getType()) {
+                        if (mRight->implicitCast(diag, mLeft->getType())) {
+                            mRight = Cast(mRight, mLeft->getType());
+                        } else {
+                            diag.compilerError(mErrorToken.getStartLocation(),
+                                       mErrorToken.getEndLocation(),
+                                       std::format("no match for '{}operator {}{}' with the given types '{}{}{}' and '{}{}{}'",
+                                                   fmt::bold, mErrorToken.getName(), fmt::defaults,
+                                                   fmt::bold, mLeft->getType()->getName(), fmt::defaults,
+                                                   fmt::bold, mRight->getType()->getName(), fmt::defaults));
+                            exit = true;
+                        }
+                        mType = mLeft->getType();
+                    }
+                } else {
+                    diag.compilerError(mErrorToken.getStartLocation(),
+                                       mErrorToken.getEndLocation(),
+                                       std::format("no match for '{}operator {}{}' with the given types '{}{}{}' and '{}{}{}'",
+                                                   fmt::bold, mErrorToken.getName(), fmt::defaults,
+                                                   fmt::bold, mLeft->getType()->getName(), fmt::defaults,
+                                                   fmt::bold, mRight->getType()->getName(), fmt::defaults));
+                    exit = true;
+                }
                 break;
 
             case Operator::Index:

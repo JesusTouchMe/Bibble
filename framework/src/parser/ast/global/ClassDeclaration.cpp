@@ -227,7 +227,7 @@ namespace parser {
             builder.setInsertPoint(&function->instructions);
 
             for (auto& value : method.body) {
-                value->codegen(builder, ctx, diag, false);
+                value->codegen(builder, ctx, diag, true);
             }
 
             if (auto type = static_cast<FunctionType*>(method.type); type->getReturnType()->isVoidType()) {
