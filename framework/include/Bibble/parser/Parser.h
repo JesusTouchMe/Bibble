@@ -15,14 +15,18 @@
 
 #include "Bibble/parser/ast/global/ClassDeclaration.h"
 #include "Bibble/parser/ast/global/Function.h"
+#include "Bibble/parser/ast/global/GlobalVar.h"
+#include "Bibble/parser/ast/global/ImportStatement.h"
 #include "Bibble/parser/ast/global/InitBlock.h"
 
+#include "Bibble/parser/ast/statement/BreakStatement.h"
 #include "Bibble/parser/ast/statement/CompoundStatement.h"
+#include "Bibble/parser/ast/statement/ContinueStatement.h"
+#include "Bibble/parser/ast/statement/ForStatement.h"
 #include "Bibble/parser/ast/statement/IfStatement.h"
 #include "Bibble/parser/ast/statement/ReturnStatement.h"
 #include "Bibble/parser/ast/statement/VariableDeclaration.h"
-
-#include "Bibble/symbol/Import.h"
+#include "Bibble/parser/ast/statement/WhileStatement.h"
 
 #include <format>
 #include <functional>
@@ -30,7 +34,7 @@
 namespace parser {
     class Parser {
     public:
-        Parser(std::vector<lexer::Token>& tokens, diagnostic::Diagnostics& diag, symbol::ImportManager& importManager, symbol::Scope* globalScope);
+        Parser(std::vector<lexer::Token>& tokens, diagnostic::Diagnostics& diag, symbol::Scope* globalScope, bool importer);
 
         std::vector<ASTNodePtr> parse();
 
@@ -42,7 +46,7 @@ namespace parser {
 
         symbol::Scope* mScope;
 
-        symbol::ImportManager& mImportManager;
+        bool mImporter;
 
         lexer::Token current() const;
         lexer::Token consume();
@@ -61,14 +65,15 @@ namespace parser {
         ASTNodePtr parseExpression(int precedence = 1);
         ASTNodePtr parsePrimary();
 
-        FunctionPtr parseFunction(std::vector<lexer::Token> modifierTokens);
+        FunctionPtr parseFunction(std::vector<lexer::Token> modifierTokens, Type* returnType);
         ClassDeclarationPtr parseClass(std::vector<lexer::Token> modifierTokens);
         void parseClassMember(std::string_view className, std::vector<ClassField>& fields,
                               std::vector<ClassMethod>& constructors, std::vector<ClassMethod>& methods,
                               std::vector<lexer::Token> modifierTokens);
+        GlobalVarPtr parseGlobalVar(std::vector<lexer::Token> modifierTokens, Type* type);
         InitBlockPtr parseInitBlock();
 
-        void parseImport();
+        ImportStatementPtr parseImport();
 
         ASTNodePtr parseParenExpression();
         IntegerLiteralPtr parseIntegerLiteral();
@@ -81,6 +86,10 @@ namespace parser {
 
         CompoundStatementPtr parseCompoundStatement();
         IfStatementPtr parseIfStatement();
+        WhileStatementPtr parseWhileStatement();
+        ForStatementPtr parseForStatement();
+        BreakStatementPtr parseBreakStatement();
+        ContinueStatementPtr parseContinueStatement();
         ReturnStatementPtr parseReturnStatement();
         VariableDeclarationPtr parseVariableDeclaration(Type* type); // type is parsed to see if it's a variable lmao
     };
@@ -116,6 +125,7 @@ namespace parser {
     FieldModifier GetFieldModifier(const lexer::Token& token, diagnostic::Diagnostics& diag);
     MethodModifier GetMethodModifier(const lexer::Token& token, diagnostic::Diagnostics& diag);
     FunctionModifier GetFunctionModifier(const lexer::Token& token, diagnostic::Diagnostics& diag);
+    GlobalVarModifier GetGlobalVarModifier(const lexer::Token& token, diagnostic::Diagnostics& diag);
 }
 
 #endif //BIBBLE_FRAMEWORK_INCLUDE_BIBBLE_PARSER_PARSER_H

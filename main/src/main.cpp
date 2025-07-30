@@ -1,21 +1,26 @@
 // Copyright 2025 JesusTouchMe
 
+#include "Compiler.h"
 #include "Platform.h"
-#include "Subcommands.h"
 
 #include "Bibble/diagnostic/Log.h"
 
+#include <vector>
+
 using namespace Bibble;
+
+void PrintHelp() {
+
+}
 
 int main(int argc, char** argv) {
 #ifdef PLATFORM_WINDOWS
     SetupWindowsConsole();
 #endif
 
-    InitSubcommands();
-
     if (argc < 2) {
-        return CallSubcommand("help");
+        PrintHelp();
+        return 0;
     }
 
     std::string subcommand = argv[1];
@@ -28,5 +33,16 @@ int main(int argc, char** argv) {
         }
     }
 
-    return CallSubcommand(subcommand, args);
+    diagnostic::Diagnostics diag;
+
+    if (subcommand == "help") {
+        PrintHelp();
+    } else if (subcommand == "version") {
+        std::cout << "bibble v0.1\n";
+    } else if (subcommand == "build") {
+        Compiler compiler(diag);
+        compiler.build();
+    }
+
+    return 0;
 }

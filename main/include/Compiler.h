@@ -1,39 +1,65 @@
 // Copyright 2025 JesusTouchMe
 
-#ifndef BIBBLE_MAIN_INCLUDE_COMPILER_H
-#define BIBBLE_MAIN_INCLUDE_COMPILER_H
+#ifndef BIBBLE_COMPILER_H
+#define BIBBLE_COMPILER_H 1
 
-#include "Bibble/symbol/Import.h"
+#include "Bibble/codegen/Builder.h"
+#include "Bibble/codegen/Context.h"
 
-#include <JesusASM/tree/ModuleNode.h>
+#include "Bibble/diagnostic/Diagnostic.h"
+
+#include "Bibble/lexer/Token.h"
+
+#include "Bibble/parser/ast/Node.h"
+
+#include <toml.hpp>
 
 #include <filesystem>
-#include <string>
-#include <vector>
+#include <unordered_map>
 
 namespace fs = std::filesystem;
 
-namespace Bibble {
-    class Compiler {
-    public:
-        void setModuleName(std::string moduleName);
+struct Module {
+    fs::path path;
+    std::string pathString;
+    std::string moduleName;
+    std::string text;
 
-        void setInput(fs::path input);
-        void setOutput(fs::path output);
+    std::vector<lexer::Token> tokens;
+    std::vector<parser::ASTNodePtr> ast;
 
-        void addImportPath(fs::path path);
+    symbol::ScopePtr scope;
+};
 
-        void compile();
+class Compiler {
+public:
+    explicit Compiler(diagnostic::Diagnostics& diag);
 
-    private:
-        std::string mModuleName;
-        fs::path mInput;
-        fs::path mOutput;
+    void build();
 
-        symbol::ImportManager mImportManager;
+private:
+    toml::table mConfig;
 
-        void addModuleBloat(JesusASM::tree::ModuleNode* module);
-    };
-}
+    diagnostic::Diagnostics& mDiag;
 
-#endif //BIBBLE_MAIN_INCLUDE_COMPILER_H
+    std::unordered_map<std::string, std::vector<fs::path>> mMultiModules;
+    std::unordered_map<fs::path, Module> mModules;
+    std::vector<fs::path> mCompiledModules;
+
+    void parseConfig(fs::path configFilePath);
+
+    fs::path getSourceDir();
+    fs::path getBuildDir();
+
+    void compileModules(fs::path projectDir);
+
+    void lexOne(fs::path inputFilePath);
+    void parseModuleName(fs::path inputFilePath, fs::path inputFilePathRelative);
+    void parseOne(fs::path inputFilePath);
+    void doImports(fs::path inputFilePath);
+    void compileModule(fs::path inputFilePath, fs::path outputFilePath);
+
+    void addModuleBloat(codegen::ModuleNode* module);
+};
+
+#endif // BIBBLE_COMPILER_H

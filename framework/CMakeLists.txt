@@ -28,8 +28,6 @@ set(SOURCES
         src/type/VoidType.cpp
         src/type/ClassType.cpp
         src/symbol/Scope.cpp
-        src/symbol/Import.cpp
-        #src/parser/ImportParser.cpp
         src/parser/ast/Node.cpp
         src/parser/ast/global/Function.cpp
         src/parser/ast/global/ClassDeclaration.cpp
@@ -56,7 +54,16 @@ set(SOURCES
     src/type/ArrayType.cpp
     src/parser/ast/expression/NewArrayExpression.cpp
     src/type/ViewType.cpp
-        src/parser/ast/global/InitBlock.cpp)
+        src/parser/ast/global/InitBlock.cpp
+    src/parser/ast/global/GlobalVar.cpp
+    src/parser/ast/statement/WhileStatement.cpp
+    src/parser/ast/statement/BreakStatement.cpp
+    src/parser/ast/statement/ContinueStatement.cpp
+    src/parser/ast/statement/ForStatement.cpp
+    src/parser/ast/global/ImportStatement.cpp
+    src/codegen/pass/Pass.cpp
+    src/codegen/pass/CommonPass.cpp
+    src/codegen/pass/optimizer/DeadCodeElimination.cpp)
 set(HEADERS
     include/Bibble/diagnostic/Diagnostic.h
     include/Bibble/type/Type.h
@@ -69,8 +76,6 @@ set(HEADERS
     include/Bibble/type/ClassType.h
     include/Bibble/parser/Parser.h
     include/Bibble/symbol/Scope.h
-    include/Bibble/parser/ImportParser.h
-    include/Bibble/symbol/Import.h
     include/Bibble/parser/ast/Node.h
     include/Bibble/codegen/Builder.h
     include/Bibble/codegen/Context.h
@@ -97,7 +102,16 @@ set(HEADERS
     include/Bibble/type/ArrayType.h
     include/Bibble/parser/ast/expression/NewArrayExpression.h
     include/Bibble/type/ViewType.h
-        include/Bibble/parser/ast/global/InitBlock.h)
+        include/Bibble/parser/ast/global/InitBlock.h
+    include/Bibble/parser/ast/global/GlobalVar.h
+    include/Bibble/parser/ast/statement/WhileStatement.h
+    include/Bibble/parser/ast/statement/BreakStatement.h
+    include/Bibble/parser/ast/statement/ContinueStatement.h
+    include/Bibble/parser/ast/statement/ForStatement.h
+    include/Bibble/parser/ast/global/ImportStatement.h
+    include/Bibble/codegen/pass/Pass.h
+    include/Bibble/codegen/pass/CommonPass.h
+    include/Bibble/codegen/pass/optimizer/DeadCodeElimination.h)
 
 source_group(TREE ${PROJECT_SOURCE_DIR} FILES ${SOURCES} ${HEADERS})
 

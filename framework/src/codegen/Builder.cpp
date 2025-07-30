@@ -450,6 +450,19 @@ namespace codegen {
         insert<FieldInsnNode>(Opcodes::SETFIELD, classType->getModuleName(), classType->getName(), name, type->getJesusASMType()->getDescriptor());
     }
 
+    void Builder::createGetGlobal(::Type* type, std::string_view moduleName, std::string_view name) {
+        mContext.emplace(type->getRuntimeType());
+        insert<GlobalVarInsnNode>(Opcodes::GETGLOBAL, moduleName, name, type->getJesusASMType()->getDescriptor());
+    }
+
+    void Builder::createSetGlobal(::Type* type, std::string_view moduleName, std::string_view name) {
+        auto value = mContext.pop();
+
+        assert(value.type == type->getRuntimeType());
+
+        insert<GlobalVarInsnNode>(Opcodes::SETGLOBAL, moduleName, name, type->getJesusASMType()->getDescriptor());
+    }
+
     void Builder::createCmpEQ(::Type* type) {
         cmpInsn<CmpOperator::EQ>(type);
     }

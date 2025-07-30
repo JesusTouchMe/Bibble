@@ -25,6 +25,8 @@ codegen::Type ArrayType::getRuntimeType() const {
 }
 
 Type::CastLevel ArrayType::castTo(Type* destType) const {
+    if (destType == this) return CastLevel::Implicit;
+
     if (destType->isClassView()) {
         bool objectType;
         if (destType->isViewType()) {

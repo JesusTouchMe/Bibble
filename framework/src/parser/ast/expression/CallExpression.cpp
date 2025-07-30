@@ -9,6 +9,9 @@
 #include <algorithm>
 #include <format>
 
+#include "Bibble/parser/ast/expression/Integerliteral.h"
+#include "Bibble/parser/ast/expression/StringLiteral.h"
+
 namespace parser {
     template<class... Ts>
     struct overloaded : Ts... { using Ts::operator()...; };
@@ -48,6 +51,14 @@ namespace parser {
             [](const std::monostate&) -> FunctionType* { return nullptr; },
             [](const symbol::FunctionSymbol* f) { return f->type; },
             [](const symbol::ClassSymbol::Method* m) { return m->type; }
+        }, func);
+    }
+
+    constexpr bool AppendCallerLocation(const CallExpression::FunctionOrMethod& func) {
+        return std::visit(overloaded{
+            [](const std::monostate&) -> bool { return false; },
+            [](const symbol::FunctionSymbol* f) -> bool { return f->appendCallerLocation; },
+            [](const symbol::ClassSymbol::Method* m) -> bool { return false; }
         }, func);
     }
 
@@ -226,14 +237,16 @@ namespace parser {
                 auto candidate = *it;
                 auto& arguments = GetType(candidate)->getArgumentTypes();
 
+                int appendCallerLocation = AppendCallerLocation(candidate) ? 3 : 0;
+
                 if (mIsMemberFunction) {
-                    if (arguments.size() != mParameters.size() + 1) {
+                    if (arguments.size() != mParameters.size() + 1 + appendCallerLocation) {
                         it = candidateFunctions.erase(it);
                     } else {
                         ++it;
                     }
                 } else {
-                    if (arguments.size() != mParameters.size()) it = candidateFunctions.erase(it);
+                    if (arguments.size() != mParameters.size() + appendCallerLocation) it = candidateFunctions.erase(it);
                     else ++it;
                 }
             }
@@ -283,7 +296,14 @@ namespace parser {
                 }
             }
 
-            return viableFunctions.front().symbol;
+            auto& best = viableFunctions.front().symbol;
+            if (AppendCallerLocation(best)) {
+                mParameters.push_back(std::make_unique<StringLiteral>(mScope, std::string(mErrorToken.getStartLocation().file), mErrorToken));
+                mParameters.push_back(std::make_unique<IntegerLiteral>(mScope, mErrorToken.getStartLocation().line, Type::Get("int"), mErrorToken));
+                mParameters.push_back(std::make_unique<IntegerLiteral>(mScope, mErrorToken.getStartLocation().col, Type::Get("int"), mErrorToken));
+            }
+
+            return best;
         }
 
         return std::monostate{};

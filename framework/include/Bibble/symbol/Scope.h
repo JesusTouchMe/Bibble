@@ -9,6 +9,8 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include "Bibble/codegen/Builder.h"
+
 struct StringViewHash {
     using is_transparent = void;
 
@@ -106,6 +108,29 @@ namespace symbol {
         std::string name;
         u16 modifiers;
         FunctionType* type;
+
+        bool appendCallerLocation = false;
+    };
+
+    struct GlobalVarSymbol {
+        GlobalVarSymbol() = default;
+        GlobalVarSymbol(std::string moduleName, std::string name, u16 modifiers, Type* type);
+
+        std::string moduleName;
+        std::string name;
+        u16 modifiers;
+        Type* type;
+    };
+
+    struct LoopContext {
+        LoopContext(codegen::Label* breakLabel, codegen::Label* continueLabel, std::string name = "")
+            : breakLabel(breakLabel)
+            , continueLabel(continueLabel)
+            , name(std::move(name)) {}
+
+        codegen::Label* breakLabel;
+        codegen::Label* continueLabel;
+        std::string name;
     };
 
     struct Scope {
@@ -114,6 +139,8 @@ namespace symbol {
         std::vector<std::string> getNames();
 
         Type* getCurrentReturnType();
+        codegen::Label* getBreakLabel(std::string name = "");
+        codegen::Label* getContinueLabel(std::string name = "");
 
         std::vector<FunctionSymbol*> getCandidateFunctions(std::vector<std::string> names);
         std::vector<FunctionSymbol*> getCandidateFunctionsDown(std::string name);
@@ -128,6 +155,8 @@ namespace symbol {
         ClassSymbol* findClass(std::vector<std::string> names);
         FunctionSymbol* findFunction(std::string_view name, FunctionType* type);
         FunctionSymbol* findFunction(std::vector<std::string> names, FunctionType* type);
+        GlobalVarSymbol* findGlobalVar(std::string_view name);
+        GlobalVarSymbol* findGlobalVar(std::vector<std::string> names);
         ClassSymbol* findOwner();
         int* findVariableIndex();
 
@@ -135,9 +164,12 @@ namespace symbol {
         ClassSymbol* resolveClassSymbolDown(std::vector<std::string> names);
         FunctionSymbol* resolveFunctionSymbolDown(std::string_view name, FunctionType* type);
         FunctionSymbol* resolveFunctionSymbolDown(std::vector<std::string> names, FunctionType* type);
+        GlobalVarSymbol* resolveGlobalVarSymbolDown(std::string_view name);
+        GlobalVarSymbol* resolveGlobalVarSymbolDown(std::vector<std::string> names);
 
-        void createClass(std::string className, ClassSymbol* baseClass, std::vector<ClassSymbol::Field> fields, std::vector<ClassSymbol::Method> constructors, std::vector<ClassSymbol::Method> methods, bool isPublic);
+        void createClass(const std::string& className, ClassSymbol* baseClass, std::vector<ClassSymbol::Field> fields, std::vector<ClassSymbol::Method> constructors, std::vector<ClassSymbol::Method> methods, bool isPublic);
         FunctionSymbol* createFunction(std::string functionName, FunctionType* type, u16 modifiers);
+        void createGlobalVar(const std::string& name, Type* type, u16 modifiers);
 
         std::string name;
 
@@ -148,6 +180,7 @@ namespace symbol {
 
         ClassSymbol* owner;
         Type* currentReturnType;
+        LoopContext loopContext;
 
         int currentVariableIndex = -1;
 
@@ -156,6 +189,7 @@ namespace symbol {
         std::unordered_map<std::string, LocalSymbol, StringViewHash, StringViewEqual> locals;
         std::unordered_map<std::string, ClassSymbol, StringViewHash, StringViewEqual> classes;
         std::vector<std::unique_ptr<FunctionSymbol>> functions;
+        std::unordered_map<std::string, GlobalVarSymbol, StringViewHash, StringViewEqual> globalVars;
     };
 
     using ScopePtr = std::unique_ptr<Scope>;

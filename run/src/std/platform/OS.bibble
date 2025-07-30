@@ -1,0 +1,7 @@
+import vm.System;
+
+private string name = System::getOsName();
+
+string getName() {
+    return name;
+}

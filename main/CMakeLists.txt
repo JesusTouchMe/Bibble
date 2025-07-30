@@ -13,13 +13,13 @@ FetchContent_MakeAvailable(tomlplusplus)
 set(SOURCES
     src/main.cpp
     src/Platform.cpp
-    src/Subcommands.cpp
-        src/Compiler.cpp)
+    src/Compiler.cpp
+)
 
 set(HEADERS
     include/Platform.h
-    include/Subcommands.h
-        include/Compiler.h)
+    include/Compiler.h
+)
 
 source_group(TREE ${PROJECT_SOURCE_DIR} FILES ${SOURCES} ${HEADERS})
 

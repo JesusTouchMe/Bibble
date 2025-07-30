@@ -84,12 +84,21 @@ namespace symbol {
         std::replace(this->moduleName.begin(), this->moduleName.end(), '.', '/');
     }
 
+    GlobalVarSymbol::GlobalVarSymbol(std::string moduleName, std::string name, u16 modifiers, Type* type)
+        : moduleName(std::move(moduleName))
+        , name(std::move(name))
+        , modifiers(modifiers)
+        , type(type) {
+        std::replace(this->moduleName.begin(), this->moduleName.end(), '.', '/');
+    }
+
     Scope::Scope(Scope* parent, std::string name, bool isGlobalScope, Type* currentReturnType)
         : name(std::move(name))
         , isGlobalScope(isGlobalScope)
         , parent(parent)
         , owner(nullptr)
-        , currentReturnType(currentReturnType) {
+        , currentReturnType(currentReturnType)
+        , loopContext(nullptr, nullptr) {
         if (parent != nullptr && isGlobalScope) {
             parent->children.push_back(this);
         }
@@ -118,6 +127,36 @@ namespace symbol {
         return nullptr;
     }
 
+    codegen::Label* Scope::getBreakLabel(std::string name) {
+        Scope* scope = this;
+        while (scope != nullptr) {
+            if (scope->loopContext.breakLabel != nullptr) {
+                if (name.empty() || scope->loopContext.name == name) {
+                    return scope->loopContext.breakLabel;
+                }
+            }
+
+            scope = scope->parent;
+        }
+
+        return nullptr;
+    }
+
+    codegen::Label* Scope::getContinueLabel(std::string name) {
+        Scope* scope = this;
+        while (scope != nullptr) {
+            if (scope->loopContext.continueLabel != nullptr) {
+                if (name.empty() || scope->loopContext.name == name) {
+                    return scope->loopContext.continueLabel;
+                }
+            }
+
+            scope = scope->parent;
+        }
+
+        return nullptr;
+    }
+
     std::vector<FunctionSymbol*> Scope::getCandidateFunctions(std::vector<std::string> names) {
         std::vector<std::string> activeNames = getNames();
         std::vector<FunctionSymbol*> candidateFunctions;
@@ -133,6 +172,9 @@ namespace symbol {
             names.insert(names.begin(), std::move(activeNames.back()));
             activeNames.erase(activeNames.end() - 1);
         } while (!activeNames.empty());
+
+        std::sort(candidateFunctions.begin(), candidateFunctions.end());
+        candidateFunctions.erase(std::unique(candidateFunctions.begin(), candidateFunctions.end()), candidateFunctions.end());
 
         return candidateFunctions;
     }
@@ -296,6 +338,38 @@ namespace symbol {
         return nullptr;
     }
 
+    GlobalVarSymbol* Scope::findGlobalVar(std::string_view name) {
+        Scope* scope = this;
+        while (scope != nullptr) {
+            auto it = scope->globalVars.find(name);
+            if (it != scope->globalVars.end()) {
+                return &it->second;
+            }
+
+            scope = scope->parent;
+        }
+
+        if (auto sym = findModuleScope()->resolveGlobalVarSymbolDown(name)) return sym;
+        return nullptr;
+    }
+
+    GlobalVarSymbol* Scope::findGlobalVar(std::vector<std::string> names) {
+        std::vector<std::string> activeNames = getNames();
+
+        Scope* moduleScope = findModuleScope();
+
+        do {
+            if (auto symbol = moduleScope->resolveGlobalVarSymbolDown(names)) return symbol;
+
+            if (activeNames.empty()) break;
+
+            names.insert(names.begin(), std::move(activeNames.back()));
+            activeNames.erase(activeNames.end() - 1);
+        } while (!activeNames.empty());
+
+        return nullptr;
+    }
+
     ClassSymbol* Scope::findOwner() {
         Scope* scope = this;
         while (scope != nullptr) {
@@ -391,12 +465,48 @@ namespace symbol {
         return nullptr;
     }
 
-    void Scope::createClass(std::string className, ClassSymbol* baseClass, std::vector<ClassSymbol::Field> fields, std::vector<ClassSymbol::Method> constructors, std::vector<ClassSymbol::Method> methods, bool isPublic) {
+    GlobalVarSymbol* Scope::resolveGlobalVarSymbolDown(std::string_view name) {
+        for (auto& n : getNames()) {
+            if (!n.empty()) return nullptr;
+        }
+
+        auto it = globalVars.find(name);
+        if (it != globalVars.end()) return &it->second;
+
+        for (auto child : children) {
+            if (auto sym = child->resolveGlobalVarSymbolDown(name)) return sym;
+        }
+
+        return nullptr;
+    }
+
+    GlobalVarSymbol* Scope::resolveGlobalVarSymbolDown(std::vector<std::string> names) {
+        std::vector<std::string> activeNames = getNames();
+
+        if (std::equal(activeNames.begin(), activeNames.end(), names.begin(), names.end() - 1)) {
+            auto it = globalVars.find(names.back());
+            if (it != globalVars.end()) return &it->second;
+        }
+
+        for (auto child : children) {
+            if (auto symbol = child->resolveGlobalVarSymbolDown(names)) {
+                return symbol;
+            }
+        }
+
+        return nullptr;
+    }
+
+    void Scope::createClass(const std::string& className, ClassSymbol* baseClass, std::vector<ClassSymbol::Field> fields, std::vector<ClassSymbol::Method> constructors, std::vector<ClassSymbol::Method> methods, bool isPublic) {
         classes[className] = ClassSymbol(findModuleScope()->name, className, baseClass, std::move(fields), std::move(constructors), std::move(methods), isPublic);
     }
 
     FunctionSymbol* Scope::createFunction(std::string functionName, FunctionType* type, u16 modifiers) {
         functions.push_back(std::make_unique<FunctionSymbol>(findModuleScope()->name, std::move(functionName), type, modifiers));
         return functions.back().get();
+    }
+
+    void Scope::createGlobalVar(const std::string& name, Type* type, u16 modifiers) {
+        globalVars[name] = GlobalVarSymbol(findModuleScope()->name, name, modifiers, type);
     }
 }

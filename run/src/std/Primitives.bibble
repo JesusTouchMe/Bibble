@@ -23,7 +23,25 @@ class String {
         return data.length;
     }
 
-    String concat(String other) view {
-        return null; // TODO: FOR LOOPS
+    bool empty() view {
+        return data.length == 0;
+    }
+
+    String concat(String other) {
+        if (other.empty()) return this;
+
+        long length = data.length;
+        long otherLength = other.data.length;
+        char[] newData = new char[length + otherLength];
+
+        for (long i = 0; i < length; i++) {
+            newData[i] = data[i];
+        }
+
+        for (long i = 0; i < otherLength; i++) {
+            newData[i] = other.data[i];
+        }
+
+        return new String(newData);
     }
 }

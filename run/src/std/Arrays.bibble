@@ -1,3 +1,9 @@
-void copy(byte[] src, long srcPos, byte[] dest, long destPos, long count) {
+import std.Math;
 
+native void copy(view<object> srcArr, long srcPos, object destArr, long destPos, long count);
+
+byte[] clone(view<byte[]> array, long newLength) {
+    byte[] newArray = new byte[newLength];
+    Arrays::copy(array, 0, newArray, 0, Math::min(array.length, newLength));
+    return newArray;
 }

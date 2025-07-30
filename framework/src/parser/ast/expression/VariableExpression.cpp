@@ -36,7 +36,11 @@ namespace parser {
             return;
         }
 
-        if (isQualified()) diag.fatalError("Unimplemented 2");
+        symbol::GlobalVarSymbol* global = isQualified() ? mScope->findGlobalVar(mNames) : mScope->findGlobalVar(mNames.back());
+        if (global != nullptr) {
+            builder.createGetGlobal(global->type, global->moduleName, global->name);
+            return;
+        }
 
         symbol::LocalSymbol* local = mScope->findLocal(mNames.back());
         if (local == nullptr) {
@@ -94,34 +98,38 @@ namespace parser {
             }
         }
 
-        if (isQualified()) {
-            symbol::FunctionSymbol* func = mScope->findFunction(mNames, nullptr);
-            if (func == nullptr) {
-                diag.compilerError(mErrorToken.getStartLocation(),
-                                   mErrorToken.getEndLocation(),
-                                   std::format("undeclared identifier '{}{}{}'",
-                                               fmt::bold, reconstructNames(), fmt::defaults));
-                exit = true;
-            } else {
-                mType = func->type;
-            }
-        } else {
-            symbol::LocalSymbol* local = mScope->findLocal(mNames.back());
-            if (local == nullptr) {
-                symbol::FunctionSymbol* func = mScope->findFunction(mNames.back(), nullptr);
-                if (func == nullptr) {
-                    diag.compilerError(mErrorToken.getStartLocation(),
-                                       mErrorToken.getEndLocation(),
-                                       std::format("undeclared identifier '{}{}{}'",
-                                                   fmt::bold, reconstructNames(), fmt::defaults));
-                    exit = true;
-                } else {
-                    mType = func->type;
-                }
-            } else {
-                mType = local->type;
-            }
+        symbol::FunctionSymbol* func = isQualified() ? mScope->findFunction(mNames, nullptr) : mScope->findFunction(mNames.back(), nullptr);
+        if (func != nullptr) {
+            mType = func->type;
+            return;
         }
+
+        symbol::GlobalVarSymbol* global = isQualified() ? mScope->findGlobalVar(mNames) : mScope->findGlobalVar(mNames.back());
+        if (global != nullptr) {
+            mType = global->type;
+            return;
+        }
+
+        if (isQualified()) {
+            diag.compilerError(mErrorToken.getStartLocation(),
+                               mErrorToken.getEndLocation(),
+                               std::format("undeclared identifier: '{}{}{}'",
+                                           fmt::bold, reconstructNames(), fmt::defaults));
+            exit = true;
+            return;
+        }
+
+        symbol::LocalSymbol* local = mScope->findLocal(mNames.back());
+        if (local != nullptr) {
+            mType = local->type;
+            return;
+        }
+
+        diag.compilerError(mErrorToken.getStartLocation(),
+                           mErrorToken.getEndLocation(),
+                           std::format("undeclared identifier: '{}{}{}'",
+                                       fmt::bold, reconstructNames(), fmt::defaults));
+        exit = true;
     }
 
     bool VariableExpression::triviallyImplicitCast(diagnostic::Diagnostics& diag, Type* destType) {

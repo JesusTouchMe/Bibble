@@ -1,5 +1,27 @@
+import std.Primitives;
+
+class TrapInfo {
+    object message;
+    string file;
+    int line;
+    int column;
+
+    TrapInfo(object message, string file, int line, int column) {
+        this.message = message;
+        this.file = file;
+        this.line = line;
+        this.column = column;
+    }
+}
+
 native void exit(int code);
 
-native void trap(string message);
+private native void trap(TrapInfo info);
+
+void trap(object message, __compiler_caller_location(file, line, col)) {
+    System::trap(new TrapInfo(message, file, line, col));
+}
 
 native void loadPlugin(string name);
+
+native string getOsName();

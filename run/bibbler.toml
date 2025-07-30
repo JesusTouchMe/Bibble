@@ -1,0 +1,14 @@
+ProjectDescription = 'Standard library for the Bibble Language'
+ProjectName = 'stdlib'
+ProjectVersion = '1.0.0'
+
+[build]
+BuildDir = '.bibble/build'
+SourceDir = 'src'
+
+[runtime]
+MainModule = 'Main'
+ModuleSearchPaths = []
+PluginSearchPaths = []
+StandardVersion = 1
+VMExecutable = 'bundled'

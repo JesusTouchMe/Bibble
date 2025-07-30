@@ -35,6 +35,8 @@ tokens {
     [
     ]
 
+    #
+
     _integer_literal
     _string_literal
     _character_literal
@@ -57,6 +59,10 @@ tokens {
 
     if
     else
+    for
+    while
+    break
+    continue
     return
 
     true

@@ -25,8 +25,8 @@ namespace diagnostic {
         };
     }
 
-    void Diagnostics::setImported(bool imported) {
-        mImported = imported;
+    void Diagnostics::addText(std::string path, std::string_view text) {
+        mTexts[path] = text;
     }
 
     void Diagnostics::setWarning(bool enable, std::string_view warning) {
@@ -40,8 +40,12 @@ namespace diagnostic {
         if (!enable && it != mWarnings.end()) mWarnings.erase(it);
     }
 
-    void Diagnostics::setText(std::string_view text) {
-        mText = text;
+    void Diagnostics::disableAllWarnings() {
+        mWarnings.clear();
+    }
+
+    void Diagnostics::setImported(bool imported) {
+        mImported = imported;
     }
 
     void Diagnostics::fatalError(std::string_view message) {
@@ -50,13 +54,15 @@ namespace diagnostic {
     }
 
     void Diagnostics::compilerError(lexer::SourceLocation start, lexer::SourceLocation end, std::string_view message) {
-        unsigned int lineStart = getLinePosition(start.line - 1);
-        unsigned int lineEnd = getLinePosition(end.line) - 1;
+        auto text = mTexts[std::string(start.file)];
+
+        unsigned int lineStart = getLinePosition(text, start.line - 1);
+        unsigned int lineEnd = getLinePosition(text, end.line) - 1;
 
         end.position += 1;
-        std::string before = std::string(mText.substr(lineStart, start.position - lineStart));
-        std::string_view error = mText.substr(start.position, end.position - start.position);
-        std::string_view after = mText.substr(end.position, lineEnd - end.position);
+        std::string before = std::string(text.substr(lineStart, start.position - lineStart));
+        std::string_view error = text.substr(start.position, end.position - start.position);
+        std::string_view after = text.substr(end.position, lineEnd - end.position);
         std::string spacesBefore = std::string(std::to_string(start.line).length(), ' ');
         std::string spacesAfter = std::string(before.length(), ' ');
 
@@ -68,16 +74,18 @@ namespace diagnostic {
     }
 
     void Diagnostics::compilerWarning(std::string_view type, lexer::SourceLocation start, lexer::SourceLocation end, std::string_view message) {
+        auto text = mTexts[std::string(start.file)];
+
         auto it = std::find(mWarnings.begin(), mWarnings.end(), type);
         if (it == mWarnings.end()) return;
 
-        unsigned int lineStart = getLinePosition(start.line - 1);
-        unsigned int lineEnd = getLinePosition(end.line) - 1;
+        unsigned int lineStart = getLinePosition(text, start.line - 1);
+        unsigned int lineEnd = getLinePosition(text, end.line) - 1;
 
         end.position += 1;
-        std::string_view before = mText.substr(lineStart, start.position - lineStart);
-        std::string_view error = mText.substr(start.position, end.position - start.position);
-        std::string_view after = mText.substr(end.position, lineEnd - end.position);
+        std::string_view before = text.substr(lineStart, start.position - lineStart);
+        std::string_view error = text.substr(start.position, end.position - start.position);
+        std::string_view after = text.substr(end.position, lineEnd - end.position);
         std::string spacesBefore = std::string(std::to_string(start.line).length(), ' ');
         std::string spacesAfter = std::string(before.length(), ' ');
 
@@ -86,10 +94,10 @@ namespace diagnostic {
         std::cerr << std::format("    {} | {}{}{}^{}{}\n", spacesBefore, spacesAfter, fmt::bold, fmt::yellow, std::string(error.length() - 1, '~'), fmt::defaults);
     }
 
-    unsigned int Diagnostics::getLinePosition(unsigned int lineNumber) {
+    unsigned int Diagnostics::getLinePosition(std::string_view text, unsigned int lineNumber) {
         unsigned int line = 0;
         for (int i = 0; i < lineNumber; i++) {
-            while(mText[line] != '\n') {
+            while(text[line] != '\n') {
                 line++;
             }
             line++;

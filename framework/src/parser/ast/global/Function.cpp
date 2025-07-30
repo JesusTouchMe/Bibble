@@ -4,12 +4,13 @@
 
 namespace parser {
     Function::Function(std::vector<FunctionModifier> modifiers, std::string name, FunctionType* type,
-                       std::vector<FunctionArgument> arguments, std::vector<ASTNodePtr> body, symbol::ScopePtr scope,
+                       std::vector<FunctionArgument> arguments, bool callerLocation, std::vector<ASTNodePtr> body, symbol::ScopePtr scope,
                        lexer::Token token)
                        : ASTNode(scope->parent, type, std::move(token))
                        , mModifiers(std::move(modifiers))
                        , mName(std::move(name))
                        , mArguments(std::move(arguments))
+                       , mCallerLocation(callerLocation)
                        , mBody(std::move(body))
                        , mOwnScope(std::move(scope)) {
         u16 rawModifiers = 0;
@@ -17,7 +18,8 @@ namespace parser {
             rawModifiers |= static_cast<u16>(modifier);
         }
 
-        mScope->createFunction(mName, static_cast<FunctionType*>(mType), rawModifiers);
+        auto* symbol = mScope->createFunction(mName, static_cast<FunctionType*>(mType), rawModifiers);
+        symbol->appendCallerLocation = callerLocation;
 
         int* index = mOwnScope->findVariableIndex();
 
@@ -48,8 +50,15 @@ namespace parser {
             value->codegen(builder, ctx, diag, true);
         }
 
-        if (auto type = static_cast<FunctionType*>(mType); type->getReturnType()->isVoidType()) {
-            builder.createReturn(type->getReturnType());
+        if (!function->instructions.hasTerminator()) {
+            auto returnType = static_cast<FunctionType*>(mType)->getReturnType();
+            if (returnType->isVoidType()) {
+                builder.createReturn(returnType);
+            } else {
+                diag.compilerError(mBody.back()->getErrorToken().getStartLocation(),
+                                   mBody.back()->getErrorToken().getEndLocation(),
+                                   "missing return statement for non-void function");
+            }
         }
     }
 

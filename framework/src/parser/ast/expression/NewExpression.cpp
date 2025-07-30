@@ -108,8 +108,8 @@ namespace parser {
             int score = 0;
             bool disallowed = false;
 
-            for (size_t i = 1; i < mParameters.size(); i++) {
-                Type::CastLevel castLevel = mParameters[i]->getType()->castTo(candidate->type->getArgumentTypes()[i]);
+            for (size_t i = 0; i < mParameters.size(); i++) {
+                Type::CastLevel castLevel = mParameters[i]->getType()->castTo(candidate->type->getArgumentTypes()[i + 1]);
                 int multiplier = 0;
 
                 if (mParameters[i]->getType() == candidate->type->getArgumentTypes()[i]) multiplier = 0;

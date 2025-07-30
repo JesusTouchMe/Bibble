@@ -15,6 +15,7 @@
 #include <JesusASM/tree/instructions/CallInsnNode.h>
 #include <JesusASM/tree/instructions/ClassInsnNode.h>
 #include <JesusASM/tree/instructions/FieldInsnNode.h>
+#include <JesusASM/tree/instructions/GlobalVarInsnNode.h>
 #include <JesusASM/tree/instructions/IncInsnNode.h>
 #include <JesusASM/tree/instructions/InsnNode.h>
 #include <JesusASM/tree/instructions/IntInsnNode.h>
@@ -27,16 +28,11 @@
 
 #include <iostream>
 
-namespace Bibble {
-    class Compiler;
-}
-
 namespace codegen {
     using Label = JesusASM::tree::LabelNode;
     using LabelPtr = std::unique_ptr<Label>;
 
     class Builder {
-    friend class Bibble::Compiler;
     public:
         using Opcodes = JesusASM::Opcode;
 
@@ -90,6 +86,9 @@ namespace codegen {
 
         void createGetField(::Type* ownerType, ::Type* type, std::string_view name);
         void createSetField(::Type* ownerType, ::Type* type, std::string_view name);
+
+        void createGetGlobal(::Type* type, std::string_view moduleName, std::string_view name);
+        void createSetGlobal(::Type* type, std::string_view moduleName, std::string_view name);
 
         void createCmpEQ(::Type* type);
         void createCmpNE(::Type* type);

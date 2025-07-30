@@ -30,7 +30,19 @@ namespace parser {
         const lexer::Token& getErrorToken() const { return mErrorToken; }
 
         virtual void codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag, bool statement) = 0;
-        virtual void ccodegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag, codegen::Label* trueLabel, codegen::Label* falseLabel) { }
+        virtual void ccodegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag, codegen::Label* trueLabel, codegen::Label* falseLabel) {
+            if (mType->isBooleanType()) {
+                codegen(builder, ctx, diag, false);
+                builder.createLdc(mType, true);
+                builder.createJumpCmpNE(mType, falseLabel);
+                builder.createJump(trueLabel);
+            } else {
+                diag.compilerError(mErrorToken.getStartLocation(),
+                                   mErrorToken.getEndLocation(),
+                                   "cannot use non-bool expression in if");
+                std::exit(1);
+            }
+        }
 
         virtual void semanticCheck(diagnostic::Diagnostics& diag, bool& exit, bool statement) = 0;
 

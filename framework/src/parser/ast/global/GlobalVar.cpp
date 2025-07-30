@@ -1,36 +1,58 @@
 // Copyright 2025 JesusTouchMe
 
-#include "Bibble/parser/ast/statement/VariableDeclaration.h"
+#include "Bibble/parser/ast/global/GlobalVar.h"
 
+#include <algorithm>
 #include <format>
 
 namespace parser {
-    VariableDeclaration::VariableDeclaration(symbol::Scope* scope, Type* type, std::string name, ASTNodePtr initialValue, lexer::Token token)
+    GlobalVar::GlobalVar(std::vector<GlobalVarModifier> modifiers, symbol::Scope* scope, Type* type, std::string name, ASTNodePtr initialValue, lexer::Token token)
         : ASTNode(scope, type, std::move(token))
+        , mModifiers(std::move(modifiers))
         , mName(std::move(name))
         , mInitialValue(std::move(initialValue)) {}
 
-    void VariableDeclaration::codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag, bool statement) {
+    void GlobalVar::codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag, bool statement) {
         if (mInitialValue != nullptr) {
-            auto* local = mScope->findLocal(mName);
+            symbol::GlobalVarSymbol& symbol = mScope->globalVars.at(mName);
+
+            auto functionType = FunctionType::Create(Type::Get("void"), {});
+            auto function = mScope->findFunction("#LinkInit", functionType);
+            JesusASM::tree::FunctionNode* functionNode;
+
+            if (function == nullptr) {
+                function = mScope->createFunction("#LinkInit", functionType, 0);
+                functionNode = builder.addFunction(0, "#LinkInit", functionType->getJesusASMType());
+            } else {
+                auto it = std::find_if(ctx.getModule()->functions.begin(), ctx.getModule()->functions.end(), [](const auto& node) {
+                    return node->name == "#LinkInit";
+                });
+                if (it == ctx.getModule()->functions.end()) {
+                    diag.fatalError("'#LinkInit' symbol declared, but no definition was found");
+                }
+
+                functionNode = it->get();
+            }
+
+            builder.setInsertPoint(&functionNode->instructions);
 
             mInitialValue->codegen(builder, ctx, diag, false);
-            builder.createStore(local->type, local->index);
+            builder.createSetGlobal(mType, symbol.moduleName, symbol.name);
         }
     }
 
-    void VariableDeclaration::semanticCheck(diagnostic::Diagnostics& diag, bool& exit, bool statement) {
+    void GlobalVar::semanticCheck(diagnostic::Diagnostics& diag, bool& exit, bool statement) {
         if (mInitialValue != nullptr) mInitialValue->semanticCheck(diag, exit, false);
 
         if (!statement) {
             diag.compilerError(mErrorToken.getStartLocation(),
                                mErrorToken.getEndLocation(),
-                               "variable declaration used as an expression");
+                               "global variable declaration used as an expression");
             exit = true;
         }
     }
 
-    void VariableDeclaration::typeCheck(diagnostic::Diagnostics& diag, bool& exit) {
+    void GlobalVar::typeCheck(diagnostic::Diagnostics& diag, bool& exit) {
         if (mType == nullptr) {
             if (mInitialValue == nullptr) {
                 diag.compilerError(mErrorToken.getStartLocation(),
@@ -46,10 +68,12 @@ namespace parser {
             mType = mInitialValue->getType();
         }
 
-        int* index = mScope->findVariableIndex();
-        mScope->locals[mName] = symbol::LocalSymbol(*index, mType);
+        u16 modifiers = 0;
+        for (auto modifier : mModifiers) {
+            modifiers |= static_cast<u16>(modifier);
+        }
 
-        *index += 1;
+        mScope->createGlobalVar(mName, mType, modifiers);
 
         if (mType->isVoidType()) {
             diag.compilerError(mErrorToken.getStartLocation(),
@@ -78,7 +102,7 @@ namespace parser {
         }
     }
 
-    bool VariableDeclaration::triviallyImplicitCast(diagnostic::Diagnostics& diag, Type* destType) {
+    bool GlobalVar::triviallyImplicitCast(diagnostic::Diagnostics& diag, Type* destType) {
         return false;
     }
 }

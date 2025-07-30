@@ -99,8 +99,6 @@ class BufferedInStream extends InStream {
         if (count == 0) return 0;
 
         long totalRead = 0;
-        //TODO: while loop
-        /*
         while (count > 0) {
             int available = this.count - position;
             if (available <= 0) {
@@ -112,17 +110,16 @@ class BufferedInStream extends InStream {
                 }
             }
 
-            int toCopy = Math::min(available, length);
+            int toCopy = Math::min(available, count);
             Arrays::copy(this.buffer, position, buffer, offset, toCopy);
 
             position += toCopy;
             offset += toCopy;
-            length -= toCopy;
+            count -= toCopy;
             totalRead += toCopy;
 
             if (in.available() == 0) break;
         }
-        */
 
         return totalRead;
     }

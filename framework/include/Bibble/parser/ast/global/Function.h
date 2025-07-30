@@ -23,7 +23,7 @@ namespace parser {
 
     class Function : public ASTNode {
     public:
-        Function(std::vector<FunctionModifier> modifiers, std::string name, FunctionType* type, std::vector<FunctionArgument> arguments, std::vector<ASTNodePtr> body, symbol::ScopePtr scope, lexer::Token token);
+        Function(std::vector<FunctionModifier> modifiers, std::string name, FunctionType* type, std::vector<FunctionArgument> arguments, bool callerLocation, std::vector<ASTNodePtr> body, symbol::ScopePtr scope, lexer::Token token);
 
         void codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag, bool statement) override;
 
@@ -36,6 +36,7 @@ namespace parser {
         std::vector<FunctionModifier> mModifiers;
         std::string mName;
         std::vector<FunctionArgument> mArguments;
+        bool mCallerLocation;
         std::vector<ASTNodePtr> mBody;
         symbol::ScopePtr mOwnScope;
     };

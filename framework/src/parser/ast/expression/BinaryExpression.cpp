@@ -132,6 +132,27 @@ namespace parser {
                         builder.createSetField(scopeOwner->getType(), field->type, field->name);
                     }
                 } else {
+                    symbol::GlobalVarSymbol* global = variableExpression->isQualified() ? mScope->findGlobalVar(variableExpression->getNames()) : mScope->findGlobalVar(variableExpression->getName());
+                    if (global != nullptr) {
+                        if (mOperator == Operator::AddAssign || mOperator == Operator::SubAssign) {
+                            builder.createGetGlobal(global->type, global->moduleName, global->name);
+                            mRight->codegen(builder, ctx, diag, false);
+
+                            if (mOperator == Operator::AddAssign) builder.createAdd(mLeft->getType());
+                            else builder.createSub(mLeft->getType());
+
+                            if (!statement) builder.createDup(mRight->getType());
+                            builder.createSetGlobal(global->type, global->moduleName, global->name);
+                        } else {
+                            mRight->codegen(builder, ctx, diag, false);
+                            if (!statement) builder.createDup(mRight->getType());
+
+                            builder.createSetGlobal(global->type, global->moduleName, global->name);
+                        }
+
+                        return;
+                    }
+
                     symbol::LocalSymbol* local = mScope->findLocal(variableExpression->getName());
                     if (local == nullptr) {
                         diag.compilerError(mErrorToken.getStartLocation(),
@@ -144,7 +165,10 @@ namespace parser {
                     if (mOperator == Operator::AddAssign || mOperator == Operator::SubAssign) {
                         builder.createLoad(local->type, local->index);
                         mRight->codegen(builder, ctx, diag, false);
-                        builder.createAdd(mLeft->getType());
+
+                        if (mOperator == Operator::AddAssign) builder.createAdd(mLeft->getType());
+                        else builder.createSub(mLeft->getType());
+
                         if (!statement) builder.createDup(mRight->getType());
                         builder.createStore(local->type, local->index);
                     } else {

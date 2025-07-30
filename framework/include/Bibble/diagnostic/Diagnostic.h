@@ -6,6 +6,7 @@
 #define BIBBLE_FRAMEWORK_INCLUDE_BIBBLE_DIAGNOSTIC_DIAGNOSTIC_H
 
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace lexer {
@@ -25,9 +26,10 @@ namespace diagnostic {
     public:
         Diagnostics();
 
-        void setImported(bool imported);
+        void addText(std::string path, std::string_view text);
         void setWarning(bool enable, std::string_view warning);
-        void setText(std::string_view text);
+        void disableAllWarnings();
+        void setImported(bool imported);
 
         [[noreturn]] void fatalError(std::string_view message);
 
@@ -35,11 +37,11 @@ namespace diagnostic {
         void compilerWarning(std::string_view type, lexer::SourceLocation start, lexer::SourceLocation end, std::string_view message);
 
     private:
-        std::string_view mText;
+        std::unordered_map<std::string, std::string_view> mTexts;
         std::vector<std::string_view> mWarnings;
         bool mImported{ false };
 
-        unsigned int getLinePosition(unsigned int lineNumber);
+        unsigned int getLinePosition(std::string_view text, unsigned int lineNumber);
     };
 }
 

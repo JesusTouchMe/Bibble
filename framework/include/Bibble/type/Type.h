@@ -15,7 +15,7 @@
 #include <utility>
 
 namespace symbol {
-    class Scope;
+    struct Scope;
 }
 
 class Type {
