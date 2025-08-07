@@ -58,6 +58,7 @@ namespace parser {
                 diag.compilerError(mBody.back()->getErrorToken().getStartLocation(),
                                    mBody.back()->getErrorToken().getEndLocation(),
                                    "missing return statement for non-void function");
+                std::exit(1);
             }
         }
     }

@@ -12,6 +12,11 @@ namespace parser {
             builder.createLdc(mType, mValue);
     }
 
+    void BooleanLiteral::ccodegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag, codegen::Label* trueLabel, codegen::Label* falseLabel) {
+        if (mValue) builder.createJump(trueLabel);
+        else builder.createJump(falseLabel);
+    }
+
     void BooleanLiteral::semanticCheck(diagnostic::Diagnostics& diag, bool& exit, bool statement) {
 
     }

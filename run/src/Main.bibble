@@ -1,6 +1,6 @@
+import std.io.Files;
 import std.IO;
-import std.Primitives;
 
 void main() {
-    IO::print("hey".length());
+    var file = Files::open("test.txt", Files::OPEN_READ);
 }

@@ -10,7 +10,7 @@ namespace codegen {
 
     void FinalizePass::execute(ModuleNode* module) {
         for (auto& func : module->functions) {
-            if (!func->instructions.hasTerminator()) {
+            if (!(func->modifiers & MODULEWEB_FUNCTION_MODIFIER_NATIVE) && !func->instructions.hasTerminator()) {
                 func->instructions.add(std::make_unique<InsnNode>(JesusASM::Opcodes::RETURN));
             }
         }

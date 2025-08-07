@@ -23,24 +23,27 @@ namespace parser {
 
         mScope->loopContext = symbol::LoopContext(mergeLabel.get(), itLabel.get(), mName);
 
-        mInit->codegen(builder, ctx, diag, true);
-        mCondition->ccodegen(builder, ctx, diag, bodyLabel.get(), mergeLabel.get());
+        if (mInit) mInit->codegen(builder, ctx, diag, true);
+
+        if (mCondition) mCondition->ccodegen(builder, ctx, diag, bodyLabel.get(), mergeLabel.get());
+        else builder.createJump(bodyLabel.get());
 
         builder.insertLabel(std::move(bodyLabel));
         mBody->codegen(builder, ctx, diag, true);
         builder.createJump(itLabel.get());
 
         builder.insertLabel(std::move(itLabel));
-        mIt->codegen(builder, ctx, diag, true);
-        mCondition->ccodegen(builder, ctx, diag, bodyLabelPtr, mergeLabel.get());
+        if (mIt) mIt->codegen(builder, ctx, diag, true);
+        if (mCondition) mCondition->ccodegen(builder, ctx, diag, bodyLabelPtr, mergeLabel.get());
+        else builder.createJump(bodyLabelPtr);
 
         builder.insertLabel(std::move(mergeLabel));
     }
 
     void ForStatement::semanticCheck(diagnostic::Diagnostics& diag, bool& exit, bool statement) {
-        mInit->semanticCheck(diag, exit, true);
-        mCondition->semanticCheck(diag, exit, false);
-        mIt->semanticCheck(diag, exit, true);
+        if (mInit) mInit->semanticCheck(diag, exit, true);
+        if (mCondition) mCondition->semanticCheck(diag, exit, false);
+        if (mIt) mIt->semanticCheck(diag, exit, true);
         mBody->semanticCheck(diag, exit, true);
 
         if (!statement) {
@@ -53,21 +56,23 @@ namespace parser {
     }
 
     void ForStatement::typeCheck(diagnostic::Diagnostics& diag, bool& exit) {
-        mInit->typeCheck(diag, exit);
-        mCondition->typeCheck(diag, exit);
-        mIt->typeCheck(diag, exit);
+        if (mInit) mInit->typeCheck(diag, exit);
+        if (mCondition) mCondition->typeCheck(diag, exit);
+        if (mIt) mIt->typeCheck(diag, exit);
         mBody->typeCheck(diag, exit);
 
-        if (!mCondition->getType()->isBooleanType()) {
-            auto boolType = Type::Get("bool");
+        if (mCondition) {
+            if (!mCondition->getType()->isBooleanType()) {
+                auto boolType = Type::Get("bool");
 
-            if (mCondition->implicitCast(diag, boolType)) {
-                mCondition = Cast(mCondition, boolType);
-            } else {
-                diag.compilerError(mCondition->getErrorToken().getStartLocation(),
-                                   mCondition->getErrorToken().getEndLocation(),
-                                   std::format("value of type '{}{}{}' cannot be used as a condition in for loop",
-                                               fmt::bold, mCondition->getType()->getName(), fmt::defaults));
+                if (mCondition->implicitCast(diag, boolType)) {
+                    mCondition = Cast(mCondition, boolType);
+                } else {
+                    diag.compilerError(mCondition->getErrorToken().getStartLocation(),
+                                       mCondition->getErrorToken().getEndLocation(),
+                                       std::format("value of type '{}{}{}' cannot be used as a condition in for loop",
+                                                   fmt::bold, mCondition->getType()->getName(), fmt::defaults));
+                }
             }
         }
     }

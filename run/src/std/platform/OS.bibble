@@ -5,3 +5,15 @@ private string name = System::getOsName();
 string getName() {
     return name;
 }
+
+bool isWindows() {
+    return name.contains("Windows");
+}
+
+bool isLinux() {
+    return name.contains("Linux");
+}
+
+bool isMacOS() {
+    return name.contains("MacOS");
+}

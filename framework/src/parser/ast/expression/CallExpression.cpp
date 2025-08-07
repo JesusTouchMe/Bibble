@@ -100,8 +100,6 @@ namespace parser {
             parameter->codegen(builder, ctx, diag, false);
         }
 
-        //builder.createCall(mBestViableFunction->moduleName, mBestViableFunction->name, mBestViableFunction->type);
-
         std::visit(overloaded{
             [](const std::monostate&) { },
             [&builder](const symbol::FunctionSymbol* f) {

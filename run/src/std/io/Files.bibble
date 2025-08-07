@@ -1,0 +1,71 @@
+// Abstracts away the OS-specific file calls
+
+int OPEN_READ       = 0x01;
+int OPEN_WRITE      = 0x02;
+int OPEN_APPEND     = 0x04;
+int OPEN_CREATE     = 0x08;
+int OPEN_TRUNCATE   = 0x10;
+int OPEN_EXCLUSIVE  = 0x20;
+
+int SEEK_BEGINNING  = 0;
+int SEEK_CURRENT    = 1;
+int SEEK_END        = 2;
+
+/*
+Opens a file at `path` with the specified `flags`. Returns a file handle on success or `null` on failure.
+Flags control read/write, creation, truncation, appending and exclusivity.
+*/
+native handle open(string path, int flags);
+
+/*
+Close the given file handle and releases any resources associated with the file.
+*/
+native void close(handle file);
+
+/*
+Read a single byte from the file and returns it.
+*/
+native byte read(handle file);
+
+/*
+Read up to `count` bytes from the file into `buffer` at the given `offset`.
+Returns the actual number of bytes read or -1 on error.
+*/
+native long read(handle file, byte[] buffer, long offset, long count);
+
+/*
+Write a single byte to the file.
+*/
+native void write(handle file, byte b);
+
+/*
+Write up to `count` bytes from `buffer` at the given `offset` into the file.
+Returns the actual number of bytes written or -1 on error.
+*/
+native void write(handle file, view<byte[]> buffer, long offset, long count);
+
+/*
+Move the file cursor to a new position relative to `origin`.
+Returns the new position in the file or -1 on error;
+*/
+native long seek(handle file, long offset, int origin);
+
+/*
+Returns the current file cursor position or -1 on error;
+*/
+native long tell(handle file);
+
+/*
+Ensures all written data is physically saved by flushing OS or hardware buffers. No internal buffering is performed by this API.
+*/
+native void flush(handle file);
+
+/*
+Returns `true` if the file cursor is at the end of the file, otherwise `false`.
+*/
+native bool eof(handle file);
+
+/*
+Returns the total size of the file in bytes or -1 on error.
+*/
+native long size(handle file);

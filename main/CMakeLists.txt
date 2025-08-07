@@ -14,11 +14,16 @@ set(SOURCES
     src/main.cpp
     src/Platform.cpp
     src/Compiler.cpp
+    src/HeaderBuilder.cpp
 )
 
 set(HEADERS
     include/Platform.h
     include/Compiler.h
+    include/HeaderBuilder.h
+    include/templates/HeaderStart.h
+    include/templates/HeaderEnd.h
+    include/templates/FunctionDeclaration.h
 )
 
 source_group(TREE ${PROJECT_SOURCE_DIR} FILES ${SOURCES} ${HEADERS})

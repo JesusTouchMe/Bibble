@@ -831,6 +831,11 @@ namespace parser {
             modifiers.push_back(GetGlobalVarModifier(token, mDiag));
         }
 
+        if (std::find(modifiers.begin(), modifiers.end(), GlobalVarModifier::Public) == modifiers.end() &&
+            std::find(modifiers.begin(), modifiers.end(), GlobalVarModifier::Private) == modifiers.end()) {
+            modifiers.push_back(GlobalVarModifier::Public);
+        }
+
         expectToken(lexer::TokenType::Identifier);
         auto token = current();
         std::string name = std::string(consume().getText());
@@ -1079,16 +1084,25 @@ namespace parser {
         expectToken(lexer::TokenType::LeftParen);
         consume();
 
-        auto init = parseExpression();
+        ASTNodePtr init = nullptr;
+        ASTNodePtr condition = nullptr;
+        ASTNodePtr it = nullptr;
+
+        if (current().getTokenType() != lexer::TokenType::Semicolon) {
+            init = parseExpression();
+        }
         expectToken(lexer::TokenType::Semicolon);
         consume();
 
-        auto condition = parseExpression();
+        if (current().getTokenType() != lexer::TokenType::Semicolon) {
+            condition = parseExpression();
+        }
         expectToken(lexer::TokenType::Semicolon);
         consume();
 
-        auto it = parseExpression();
-
+        if (current().getTokenType() != lexer::TokenType::RightParen) {
+            it = parseExpression();
+        }
         expectToken(lexer::TokenType::RightParen);
         consume();
 

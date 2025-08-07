@@ -1,5 +1,3 @@
-import std.Primitives;
-
 class TrapInfo {
     object message;
     string file;

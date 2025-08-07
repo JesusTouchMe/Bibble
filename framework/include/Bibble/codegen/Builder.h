@@ -40,8 +40,9 @@ namespace codegen {
 
         void setInsertPoint(InsnList* insertPoint);
 
-        ClassNode* addClass(u16 modifiers, std::string_view name, std::string_view superModule = "", std::string_view superClass = "");
-        FunctionNode* addFunction(u16 modifiers, std::string_view name, JesusASM::Type* type);
+        ClassNode* addClass(u16 modifiers, std::string_view name, std::string_view superModule = "", std::string_view superClass = "") const;
+        GlobalVarNode* addGlobalVar(u16 modifiers, std::string_view name, JesusASM::Type* type) const;
+        FunctionNode* addFunction(u16 modifiers, std::string_view name, JesusASM::Type* type) const;
 
         LabelPtr createLabel(std::string name);
         void insertLabel(LabelPtr label);

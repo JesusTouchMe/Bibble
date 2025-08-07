@@ -12,7 +12,7 @@ namespace parser {
     void CastExpression::codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag, bool statement) {
         mValue->codegen(builder, ctx, diag, statement);
 
-        if (mType->isViewType()) return; // a view type is literally just the type with fancy wrapper for the compiler
+        if (mType->isViewType() || mValue->getType()->isViewType()) return; // a view type is literally just the type with fancy wrapper for the compiler
 
         if (!statement) builder.createCast(mValue->getType(), mType);
     }

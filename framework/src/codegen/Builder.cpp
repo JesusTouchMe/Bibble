@@ -19,13 +19,18 @@ namespace codegen {
         mContext.mVirtualStack.clear();
     }
 
-    ClassNode* Builder::addClass(u16 modifiers, std::string_view name, std::string_view superModule, std::string_view superClass) {
+    ClassNode* Builder::addClass(u16 modifiers, std::string_view name, std::string_view superModule, std::string_view superClass) const {
         mContext.getModule()->classes.push_back(std::make_unique<ClassNode>
                 (modifiers, name, JesusASM::Name(superModule, superClass)));
         return mContext.getModule()->classes.back().get();
     }
 
-    FunctionNode* Builder::addFunction(u16 modifiers, std::string_view name, JesusASM::Type* type) {
+    GlobalVarNode* Builder::addGlobalVar(u16 modifiers, std::string_view name, JesusASM::Type* type) const {
+        mContext.getModule()->globals.push_back(std::make_unique<GlobalVarNode>(modifiers, name, type->getDescriptor()));
+        return mContext.getModule()->globals.back().get();
+    }
+
+    FunctionNode* Builder::addFunction(u16 modifiers, std::string_view name, JesusASM::Type* type) const {
         mContext.getModule()->functions.push_back(std::make_unique<FunctionNode>(modifiers, name, type->getDescriptor()));
         return mContext.getModule()->functions.back().get();
     }
@@ -797,7 +802,8 @@ namespace codegen {
             if (to->isVoidType()) {
                 createPop(from);
             } else {
-                createLdc(to, value.value->value);
+                if (to->isReferenceType() && value.value->value == 0) createLdc(to, nullptr);
+                else createLdc(to, value.value->value);
             }
             return;
         }

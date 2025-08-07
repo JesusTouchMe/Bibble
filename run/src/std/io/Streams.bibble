@@ -8,7 +8,22 @@ abstract class InStream {
     abstract byte read();
 
     virtual long read(byte[] buffer, long offset, long count) {
-        return 0;
+        if (buffer == null) {
+            Trap::nullReference();
+            return -1; // TODO: noreturn function annotation
+        }
+        if (offset < 0 || count < 0 || offset + count > buffer.length) {
+            Trap::outOfBounds();
+            return -1; // TODO: noreturn function annotation
+        }
+
+        long i = 0;
+        for (; i < count; i++) {
+            byte val = read();
+            buffer[offset + i] = val;
+        }
+
+        return i;
     }
 
     virtual long read(byte[] buffer) {
@@ -18,7 +33,17 @@ abstract class InStream {
     abstract long available();
 
     virtual long skip(long amount) {
-        return 0;
+        long remaining = amount;
+        byte[] buffer = new byte[2048];
+
+        while (remaining > 0) {
+            long toRead = Math::min(buffer.length, remaining);
+            long count = read(buffer, 0, toRead);
+            if (count == -1) break;
+            remaining -= count;
+        }
+
+        return amount - remaining;
     }
 }
 
@@ -29,11 +54,22 @@ abstract class OutStream {
 
     abstract void write(byte b);
 
-    virtual void write(byte[] bytes, long offset, long count) {
+    virtual void write(view<byte[]> bytes, long offset, long count) {
+        if (bytes == null) {
+            Trap::nullReference();
+            return; // TODO: noreturn function annotation
+        }
+        if (offset < 0 || count < 0 || offset + count > bytes.length) {
+            Trap::outOfBounds();
+            return; // TODO: noreturn function annotation
+        }
 
+        for (long i = 0; i < count; i++) {
+            write(bytes[offset + i]);
+        }
     }
 
-    virtual void write(byte[] bytes) {
+    virtual void write(view<byte[]> bytes) {
         write(bytes, 0, bytes.length);
     }
 }
@@ -194,7 +230,7 @@ class BufferedOutStream extends OutStream {
         buffer[count++] = b;
     }
 
-    void write(byte[] buffer, long offset, long count) {
+    void write(view<byte[]> buffer, long offset, long count) override {
         if (buffer == null) {
             Trap::nullReference();
             return; // TODO: noreturn function annotation

@@ -1,6 +1,7 @@
 // Copyright 2025 JesusTouchMe
 
 #include "Compiler.h"
+#include "HeaderBuilder.h"
 
 #include "Bibble/codegen/pass/optimizer/DeadCodeElimination.h"
 
@@ -219,6 +220,26 @@ void Compiler::compileModule(fs::path inputFilePath, fs::path outputFilePath) {
     passManager.addPass(std::make_unique<codegen::CodegenPass>(outputFilePath.string()));
 
     passManager.runPasses(ctx.getModule());
+
+    bool hasNatives = std::any_of(ctx.getModule()->functions.begin(), ctx.getModule()->functions.end(), [](auto& node) {
+       return node->modifiers & MODULEWEB_FUNCTION_MODIFIER_NATIVE;
+    });
+
+    if (hasNatives) {
+        fs::path outputHeader = outputFilePath;
+        outputHeader.replace_extension(".h");
+
+        HeaderBuilder headerBuilder(mModules[inputFilePath].moduleName);
+
+        for (auto& func : ctx.getModule()->functions) {
+            if (func->modifiers & MODULEWEB_FUNCTION_MODIFIER_NATIVE)
+                headerBuilder.addFunction(func->name, func->descriptor);
+        }
+
+        std::ofstream out(outputHeader);
+        headerBuilder.finalize();
+        headerBuilder.emit(out);
+    }
 }
 
 void Compiler::addModuleBloat(codegen::ModuleNode* module) {

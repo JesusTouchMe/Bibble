@@ -27,6 +27,22 @@ class String {
         return data.length == 0;
     }
 
+    bool contains(String other) view {
+        if (other.data.length == 0) return true;
+        if (other.data.length > data.length) return false;
+
+        for (long i = 0; i <= data.length - other.data.length; i++) {
+            long j = 0;
+            while (j < other.data.length && data[i + j] == other.data[j]) {
+                j++;
+            }
+
+            if (j == other.data.length) return true;
+        }
+
+        return false;
+    }
+
     String concat(String other) {
         if (other.empty()) return this;
 

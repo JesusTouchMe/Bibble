@@ -10,9 +10,23 @@ namespace parser {
         : ASTNode(scope, type, std::move(token))
         , mModifiers(std::move(modifiers))
         , mName(std::move(name))
-        , mInitialValue(std::move(initialValue)) {}
+        , mInitialValue(std::move(initialValue)) {
+        u16 realModifiers = 0;
+        for (auto modifier : mModifiers) {
+            realModifiers |= static_cast<u16>(modifier);
+        }
+
+        mScope->createGlobalVar(mName, mType, realModifiers);
+    }
 
     void GlobalVar::codegen(codegen::Builder& builder, codegen::Context& ctx, diagnostic::Diagnostics& diag, bool statement) {
+        u16 modifiers = 0;
+        for (auto modifier : mModifiers) {
+            modifiers |= static_cast<u16>(modifier);
+        }
+
+        builder.addGlobalVar(modifiers, mName, mType->getJesusASMType());
+
         if (mInitialValue != nullptr) {
             symbol::GlobalVarSymbol& symbol = mScope->globalVars.at(mName);
 
@@ -67,13 +81,6 @@ namespace parser {
 
             mType = mInitialValue->getType();
         }
-
-        u16 modifiers = 0;
-        for (auto modifier : mModifiers) {
-            modifiers |= static_cast<u16>(modifier);
-        }
-
-        mScope->createGlobalVar(mName, mType, modifiers);
 
         if (mType->isVoidType()) {
             diag.compilerError(mErrorToken.getStartLocation(),

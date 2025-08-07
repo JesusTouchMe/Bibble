@@ -1,1 +1,0 @@
-native void print(int message);
